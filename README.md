@@ -1,2 +1,15 @@
 # LanguageTeatcher
-language teacher fo 3yo
+
+A mobile app (Android first, Flutter) that teaches a 3-year-old Czech-speaking
+child English vocabulary — **voice and pictures only, no written words in child
+mode**. Words are spoken in Czech, then in English, in the parent's recorded
+voice where available and free on-device TTS otherwise. Lessons repeat each word
+several times, score the child's spoken answers, and adapt: low-scoring words
+return in the next lesson, mastered words come back for review a few lessons
+later.
+
+- **[PLAN.md](PLAN.md)** — the full build plan: product spec, learning
+  algorithm, technical architecture, milestones.
+- **[content/vocabulary.json](content/vocabulary.json)** — the research-based
+  word list (221 Czech↔English pairs in 13 categories) that drives the lesson
+  selector; designed to be expanded.
