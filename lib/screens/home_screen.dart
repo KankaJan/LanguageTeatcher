@@ -1,0 +1,125 @@
+import 'package:flutter/material.dart';
+
+import '../models/vocabulary.dart';
+import '../services/app_prefs.dart';
+import 'lesson_screen.dart';
+import 'parent_screen.dart';
+
+/// Child-facing start screen: one giant play button, no text. The parent
+/// section hides behind a long-press on the small corner icon.
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({
+    super.key,
+    required this.vocabulary,
+    required this.prefs,
+  });
+
+  final Vocabulary vocabulary;
+  final AppPrefs prefs;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFFDF8F0),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('🦁', style: TextStyle(fontSize: 96)),
+                  const SizedBox(height: 40),
+                  _PlayButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => LessonScreen(
+                            vocabulary: vocabulary,
+                            prefs: prefs,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              // Long-press-only parent gate so the child can't open it by
+              // tapping. A sturdier gate arrives with milestone M6.
+              child: GestureDetector(
+                onLongPress: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ParentScreen(
+                        vocabulary: vocabulary,
+                        prefs: prefs,
+                      ),
+                    ),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Icon(
+                    Icons.settings,
+                    size: 26,
+                    color: Colors.brown.withValues(alpha: 0.2),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PlayButton extends StatefulWidget {
+  const _PlayButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  State<_PlayButton> createState() => _PlayButtonState();
+}
+
+class _PlayButtonState extends State<_PlayButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+    lowerBound: 0.94,
+    upperBound: 1.06,
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: _controller,
+      child: Material(
+        shape: const CircleBorder(),
+        color: const Color(0xFF66BB6A),
+        elevation: 8,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: widget.onPressed,
+          child: const SizedBox(
+            width: 168,
+            height: 168,
+            child: Icon(Icons.play_arrow_rounded, size: 110, color: Colors.white),
+          ),
+        ),
+      ),
+    );
+  }
+}
