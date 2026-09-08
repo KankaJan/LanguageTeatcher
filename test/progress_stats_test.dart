@@ -120,6 +120,34 @@ void main() {
     expect(stats.struggling.first.word.id, 'w0');
   });
 
+  test('attemptCountsByWord tallies correct, wrong, and pending per word', () {
+    Attempt attempt(int id, String wordId, {int? adult, int? auto}) => Attempt(
+          id: id,
+          wordId: wordId,
+          lesson: 1,
+          repetition: 2,
+          filePath: 'x.wav',
+          createdAt: DateTime(2026),
+          adultScore: adult,
+          autoScore: auto,
+        );
+    final counts = attemptCountsByWord([
+      attempt(1, 'a0', auto: 1),
+      attempt(2, 'a0', adult: 1, auto: 0), // parent override wins → correct
+      attempt(3, 'a0', auto: 0),
+      attempt(4, 'a0'),
+      attempt(5, 'a1', adult: 0),
+    ]);
+
+    final a0 = counts['a0']!;
+    expect((a0.correct, a0.wrong, a0.pending), (2, 1, 1));
+    expect(a0.total, 4);
+    final a1 = counts['a1']!;
+    expect((a1.correct, a1.wrong, a1.pending), (0, 1, 0));
+    expect(counts.containsKey('a2'), isFalse,
+        reason: 'words never attempted have no entry');
+  });
+
   test('attempt tallies split graded from pending', () {
     Attempt attempt(int id, {int? adult, int? auto}) => Attempt(
           id: id,

@@ -18,6 +18,45 @@ class CategoryStats {
   int get remaining => total - known - learning;
 }
 
+/// How one word's spoken attempts turned out so far.
+class WordAttemptCounts {
+  const WordAttemptCounts({
+    this.correct = 0,
+    this.wrong = 0,
+    this.pending = 0,
+  });
+
+  final int correct;
+  final int wrong;
+  final int pending;
+
+  int get total => correct + wrong + pending;
+}
+
+/// Per-word tallies of the child's answers: correct / wrong (parent grade
+/// outranks the machine, see Attempt.effectiveScore) / awaiting a grade.
+Map<String, WordAttemptCounts> attemptCountsByWord(List<Attempt> attempts) {
+  final counts = <String, WordAttemptCounts>{};
+  for (final attempt in attempts) {
+    final current = counts[attempt.wordId] ?? const WordAttemptCounts();
+    counts[attempt.wordId] = switch (attempt.effectiveScore) {
+      1 => WordAttemptCounts(
+          correct: current.correct + 1,
+          wrong: current.wrong,
+          pending: current.pending),
+      0 => WordAttemptCounts(
+          correct: current.correct,
+          wrong: current.wrong + 1,
+          pending: current.pending),
+      _ => WordAttemptCounts(
+          correct: current.correct,
+          wrong: current.wrong,
+          pending: current.pending + 1),
+    };
+  }
+  return counts;
+}
+
 /// A word the child keeps missing, with the score that put it there.
 class StrugglingWord {
   const StrugglingWord({

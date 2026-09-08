@@ -9,6 +9,7 @@ import '../services/model_manager.dart';
 import '../services/pack_store.dart';
 import '../services/progress_store.dart';
 import '../services/recording_store.dart';
+import '../services/speech_scorer.dart';
 import '../services/tts_service.dart';
 import 'pack_creation_dialog.dart';
 import 'progress_dashboard_screen.dart';
@@ -27,6 +28,7 @@ class ParentScreen extends StatefulWidget {
     required this.recordings,
     required this.progress,
     required this.models,
+    required this.scorer,
   });
 
   final LanguagePack pack;
@@ -35,6 +37,7 @@ class ParentScreen extends StatefulWidget {
   final RecordingStore recordings;
   final ProgressStore progress;
   final ModelManager? models;
+  final SpeechScorer scorer;
 
   @override
   State<ParentScreen> createState() => _ParentScreenState();
@@ -347,6 +350,7 @@ class _ParentScreenState extends State<ParentScreen> {
               padding: const EdgeInsets.all(16),
               child: _SpeechRecognitionSection(
                 models: widget.models,
+                scorer: widget.scorer,
                 targetLanguage: languageByCode(widget.pack.targetCode),
               ),
             ),
@@ -397,10 +401,12 @@ class _ParentScreenState extends State<ParentScreen> {
 class _SpeechRecognitionSection extends StatelessWidget {
   const _SpeechRecognitionSection({
     required this.models,
+    required this.scorer,
     required this.targetLanguage,
   });
 
   final ModelManager? models;
+  final SpeechScorer scorer;
   final Language targetLanguage;
 
   @override
@@ -428,10 +434,11 @@ class _SpeechRecognitionSection extends StatelessWidget {
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           switch (manager.status) {
-            ModelStatus.ready => const Text(
+            ModelStatus.ready => Text(
                 'Model je nainstalovaný. Jasné odpovědi se hodnotí samy; '
                 'nejisté vám dál chodí do kontroly výslovnosti a vaše '
-                'hodnocení má vždy přednost.'),
+                'hodnocení má vždy přednost.'
+                '${scorer.lastIssue == null ? '' : '\n\n⚠️ Poslední hodnocení selhalo: ${scorer.lastIssue}'}'),
             ModelStatus.downloading => Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

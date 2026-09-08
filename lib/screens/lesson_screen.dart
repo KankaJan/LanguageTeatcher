@@ -144,17 +144,44 @@ class _LessonScreenState extends State<LessonScreen> {
     await _audio.speak(word, WordLang.en);
     if (stale()) return;
     await _captureAttempt(word, run);
+    final pendingScore = _pendingScore;
     if (stale()) return;
 
     if (_isLastPassOfWord(_passIndex)) {
-      // The word is done for today: a quick star burst as a reward.
-      setState(() => _starBurst = true);
-      if (await interrupted(const Duration(milliseconds: 900))) return;
+      // Give the recognizer a moment to score the last answer, then reward
+      // only words that were not answered wrongly — a star for a confidently
+      // wrong answer teaches the wrong thing. With no scores at all
+      // (no model, mic denied) participation still earns the star.
+      if (pendingScore != null) {
+        await pendingScore.timeout(const Duration(milliseconds: 1500),
+            onTimeout: () {});
+      }
+      if (stale()) return;
+      if (_wordEarnedStar(word)) {
+        setState(() => _starBurst = true);
+        if (await interrupted(const Duration(milliseconds: 900))) return;
+      }
     }
     _advance();
   }
 
+  bool _wordEarnedStar(Word word) {
+    final scores = widget.progress.attempts
+        .where((a) => a.wordId == word.id && a.lesson == _lessonNumber)
+        .map((a) => a.effectiveScore)
+        .whereType<int>()
+        .toList();
+    if (scores.isEmpty) return true;
+    final avg = scores.fold<int>(0, (s, v) => s + v) / scores.length;
+    return avg >= ProgressStore.passThreshold;
+  }
+
+  /// In-flight scoring of the most recently captured attempt, so the reward
+  /// decision can briefly wait for the verdict.
+  Future<void>? _pendingScore;
+
   Future<void> _captureAttempt(Word word, int run) async {
+    _pendingScore = null;
     _micAllowed ??= await _recorder.hasPermission();
     if (!mounted || _runId != run) return;
     if (_micAllowed != true) {
@@ -199,7 +226,7 @@ class _LessonScreenState extends State<LessonScreen> {
     });
 
     await Future<void>.delayed(_recordWindow);
-    if (!mounted || _runId != run) return; // skip already cancelled recording
+    if (!mounted || _runId != run) return; // skip cancelled recording
 
     try {
       await _recorder.stop();
@@ -217,7 +244,9 @@ class _LessonScreenState extends State<LessonScreen> {
       filePath: path,
     );
     // Score in the background; the lesson never waits for the recognizer.
-    unawaited(_scoreAttempt(attempt, word));
+    final pending = _scoreAttempt(attempt, word);
+    unawaited(pending);
+    _pendingScore = pending;
   }
 
   Future<void> _cancelRecorder() async {

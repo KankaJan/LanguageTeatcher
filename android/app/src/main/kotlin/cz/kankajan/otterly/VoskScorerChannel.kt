@@ -108,7 +108,10 @@ class VoskScorerChannel : MethodChannel.MethodCallHandler {
             val json = JSONObject(recognizer.finalResult)
             val text = json.optString("text", "")
             val words = json.optJSONArray("result")
-            var confidence = 0.0
+            // -1 = the engine produced no per-word confidences (common with
+            // grammar decoding); the Dart side then judges by the transcript
+            // alone, which the tiny grammar already constrains.
+            var confidence = -1.0
             if (words != null && words.length() > 0) {
                 var sum = 0.0
                 for (i in 0 until words.length()) {

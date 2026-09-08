@@ -32,6 +32,15 @@ void main() {
     expect(eval('dog', ScoringRules.confidenceThreshold).autoScore, 1);
   });
 
+  test('missing confidence (-1) judges by the transcript alone', () {
+    // Grammar-constrained decoding often yields no per-word confidences;
+    // the transcript still had to win against the tiny grammar.
+    expect(eval('dog', -1).autoScore, 1);
+    expect(eval('cat', -1).autoScore, 0);
+    expect(eval('', -1).autoScore, isNull);
+    expect(eval('[unk]', -1).autoScore, isNull);
+  });
+
   test('matching is case- and whitespace-insensitive', () {
     expect(eval(' Dog ', 0.9).autoScore, 1);
     expect(eval('ICE CREAM', 0.9, expected: 'ice cream').autoScore, 1);

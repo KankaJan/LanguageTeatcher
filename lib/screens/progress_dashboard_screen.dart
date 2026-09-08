@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../logic/progress_stats.dart';
 import '../models/vocabulary.dart';
 import '../services/progress_store.dart';
+import 'category_detail_screen.dart';
 
 /// Parent-mode dashboard: how the child is doing, per category and per word.
 /// Palette (validated for CVD separation): green = known, blue = practicing,
@@ -71,29 +72,59 @@ class ProgressDashboardScreen extends StatelessWidget {
                           _LegendDot(color: null, label: 'zbývá'),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      for (final c in stats.categories) ...[
-                        Padding(
-                          padding: const EdgeInsets.only(top: 10),
-                          child: Row(
-                            children: [
-                              Text(c.category.emoji,
-                                  style: const TextStyle(fontSize: 18)),
-                              const SizedBox(width: 8),
-                              Expanded(child: Text(c.category.cz)),
-                              Text(
-                                '${c.known + c.learning} z ${c.total}',
-                                style: Theme.of(context).textTheme.bodySmall,
+                      const SizedBox(height: 4),
+                      Text(
+                        'Klepnutím na téma zobrazíte jednotlivá slovíčka '
+                        'a jejich úspěšnost.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 8),
+                      for (final c in stats.categories)
+                        InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => CategoryDetailScreen(
+                                  vocabulary: vocabulary,
+                                  category: c.category,
+                                  progress: progress,
+                                ),
                               ),
-                            ],
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(c.category.emoji,
+                                        style: const TextStyle(fontSize: 18)),
+                                    const SizedBox(width: 8),
+                                    Expanded(child: Text(c.category.cz)),
+                                    Text(
+                                      '${c.known + c.learning} z ${c.total}',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(Icons.chevron_right,
+                                        size: 18,
+                                        color: Colors.brown
+                                            .withValues(alpha: 0.4)),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                _SegmentedBar(
+                                    known: c.known,
+                                    learning: c.learning,
+                                    total: c.total),
+                              ],
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        _SegmentedBar(
-                            known: c.known,
-                            learning: c.learning,
-                            total: c.total),
-                      ],
                     ],
                   ),
                 ),

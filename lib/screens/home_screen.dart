@@ -100,6 +100,7 @@ class HomeScreen extends StatelessWidget {
                         recordings: recordings,
                         progress: progress,
                         models: models,
+                        scorer: scorer,
                       ),
                     ),
                   );
