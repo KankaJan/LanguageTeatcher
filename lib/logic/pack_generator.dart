@@ -58,7 +58,14 @@ Future<LanguagePack> generatePack({
       vocabulary: Vocabulary(categories: base.categories, words: words),
     );
   } finally {
-    await sourceTranslator?.dispose();
-    await targetTranslator?.dispose();
+    // Dispose independently and never let cleanup failures escape — they
+    // would discard an already generated pack.
+    for (final translator in [sourceTranslator, targetTranslator]) {
+      try {
+        await translator?.dispose();
+      } on Object {
+        // Best-effort cleanup only.
+      }
+    }
   }
 }

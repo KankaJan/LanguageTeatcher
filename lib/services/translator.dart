@@ -47,5 +47,14 @@ class MlKitWordTranslator implements WordTranslator {
   Future<String> translate(String text) => _translator.translateText(text);
 
   @override
-  Future<void> dispose() => _translator.close();
+  Future<void> dispose() async {
+    // Closing is best-effort cleanup of a one-shot job. Some plugin/device
+    // combinations throw MissingPluginException from close even though
+    // translation itself worked — that must never fail pack generation.
+    try {
+      await _translator.close();
+    } on Object {
+      // Nothing to do; the OS reclaims the resources with the isolate.
+    }
+  }
 }

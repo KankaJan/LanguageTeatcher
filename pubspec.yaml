@@ -18,6 +18,7 @@ dependencies:
   record: ^6.0.0
   shared_preferences: ^2.5.0
   google_mlkit_translation: ^0.15.1
+  wakelock_plus: ^1.8.0
 
 dev_dependencies:
   flutter_test:

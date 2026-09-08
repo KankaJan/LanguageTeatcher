@@ -24,10 +24,11 @@ Vocabulary miniBase() => Vocabulary(
     );
 
 class FakeTranslator implements WordTranslator {
-  FakeTranslator(this.from, this.to);
+  FakeTranslator(this.from, this.to, {this.disposeThrows = false});
 
   final String from;
   final String to;
+  final bool disposeThrows;
   bool prepared = false;
   bool disposed = false;
 
@@ -38,7 +39,12 @@ class FakeTranslator implements WordTranslator {
   Future<String> translate(String text) async => '$to:$text';
 
   @override
-  Future<void> dispose() async => disposed = true;
+  Future<void> dispose() async {
+    disposed = true;
+    if (disposeThrows) {
+      throw Exception('close not implemented on this device');
+    }
+  }
 }
 
 void main() {
@@ -119,6 +125,21 @@ void main() {
       expect(progress, [1, 2]);
       expect(pack.generated, isTrue);
       expect(pack.id, startsWith('uk_de_'));
+    });
+
+    test('a failing translator close never discards the generated pack',
+        () async {
+      // Regression: MissingPluginException from ML Kit's close aborted
+      // cs→pl generation even though every word was already translated.
+      final pack = await generatePack(
+        base: miniBase(),
+        sourceCode: 'cs',
+        targetCode: 'pl',
+        translatorFactory: (from, to) =>
+            FakeTranslator(from, to, disposeThrows: true),
+      );
+      expect(pack.vocabulary.orderedWords.first.en, 'pl:dog');
+      expect(pack.targetCode, 'pl');
     });
 
     test('cs source with translated target only builds one translator',

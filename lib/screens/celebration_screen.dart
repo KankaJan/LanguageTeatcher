@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../services/tts_service.dart';
 
@@ -38,6 +39,9 @@ class _CelebrationScreenState extends State<CelebrationScreen>
   @override
   void initState() {
     super.initState();
+    // Keep the screen on through the confetti (the lesson's wakelock ends
+    // when this screen replaces it).
+    WakelockPlus.enable();
     _cheer();
     _autoClose = Timer(const Duration(seconds: 5), _close);
   }
@@ -58,6 +62,7 @@ class _CelebrationScreenState extends State<CelebrationScreen>
 
   @override
   void dispose() {
+    WakelockPlus.disable();
     _autoClose?.cancel();
     _tts.dispose();
     _stars.dispose();

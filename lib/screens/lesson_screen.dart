@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:record/record.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../logic/languages.dart';
 import '../logic/lesson_builder.dart';
@@ -78,6 +79,8 @@ class _LessonScreenState extends State<LessonScreen> {
   @override
   void initState() {
     super.initState();
+    // The child listens hands-off; the screen must not dim or lock.
+    WakelockPlus.enable();
     final words = selectWords(
       orderedWords: widget.vocabulary.orderedWords,
       progress: widget.progress.wordStates,
@@ -99,6 +102,7 @@ class _LessonScreenState extends State<LessonScreen> {
 
   @override
   void dispose() {
+    WakelockPlus.disable();
     _recorder.dispose();
     _audio.dispose();
     super.dispose();
