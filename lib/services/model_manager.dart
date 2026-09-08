@@ -97,8 +97,13 @@ class ModelManager extends ChangeNotifier {
         client.close();
       }
 
-      // The zip contains a single top-level "<modelName>/" directory.
+      // Usually the zip contains a single top-level "<modelName>/"
+      // directory, but that is not guaranteed for every model — verify and
+      // normalize before declaring the model installed, because handing the
+      // native recognizer a bogus path must never happen.
+      final before = baseDir.listSync().map((e) => e.path).toSet();
       await extractFileToDisk(zipFile.path, baseDir.path);
+      normalizeExtraction(previousEntries: before);
       _completeMarker.writeAsStringSync('ok');
       _status = ModelStatus.ready;
     } on Exception catch (e) {
@@ -113,6 +118,29 @@ class ModelManager extends ChangeNotifier {
       }
       _progress = 0;
       notifyListeners();
+    }
+  }
+
+  /// Ensures the extraction produced `<baseDir>/<modelName>` with content:
+  /// when the archive's top-level directory is named differently, the single
+  /// newly created directory is renamed; an empty or missing result throws
+  /// (caught by [download]'s error path, so the card shows the failure and
+  /// no `.complete` marker is written).
+  @visibleForTesting
+  void normalizeExtraction({required Set<String> previousEntries}) {
+    if (!_modelDir.existsSync()) {
+      final created = baseDir
+          .listSync()
+          .whereType<Directory>()
+          .where((d) => !previousEntries.contains(d.path))
+          .toList();
+      if (created.length == 1) {
+        created.single.renameSync(_modelDir.path);
+      }
+    }
+    if (!_modelDir.existsSync() || _modelDir.listSync().isEmpty) {
+      throw const FileSystemException(
+          'The model archive did not contain the expected model directory.');
     }
   }
 

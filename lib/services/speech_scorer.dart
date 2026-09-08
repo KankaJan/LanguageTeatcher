@@ -104,9 +104,9 @@ class VoskScorer implements SpeechScorer {
         confidence: (raw['confidence'] as num?)?.toDouble() ?? 0,
         expected: expected,
       );
-    } on PlatformException {
-      return null;
-    } on MissingPluginException {
+    } on Object {
+      // Channel errors, missing plugin, malformed results — all mean the
+      // same thing here: no automatic score, the parent grades instead.
       return null;
     }
   }

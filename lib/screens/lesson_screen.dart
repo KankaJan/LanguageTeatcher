@@ -166,17 +166,27 @@ class _LessonScreenState extends State<LessonScreen> {
         'l${_lessonNumber}_${word.id}_r${_repetitionNumber(_passIndex)}_'
         '${DateTime.now().millisecondsSinceEpoch}.wav';
 
-    // 16 kHz mono PCM WAV: what the on-device recognizer consumes.
-    await _recorder.start(
-      const RecordConfig(
-        encoder: AudioEncoder.wav,
-        sampleRate: 16000,
-        numChannels: 1,
-      ),
-      path: path,
-    );
+    // Recorder failures must never break the lesson: degrade to the
+    // repeat-aloud pause, exactly like a denied mic permission.
+    try {
+      // 16 kHz mono PCM WAV: what the on-device recognizer consumes.
+      await _recorder.start(
+        const RecordConfig(
+          encoder: AudioEncoder.wav,
+          sampleRate: 16000,
+          numChannels: 1,
+        ),
+        path: path,
+      );
+    } on Exception {
+      if (!mounted || _runId != run) return;
+      setState(() => _hint = _Hint.repeatAfterMe);
+      await Future<void>.delayed(const Duration(milliseconds: 2500));
+      if (mounted) setState(() => _hint = _Hint.none);
+      return;
+    }
     if (!mounted || _runId != run) {
-      await _recorder.cancel();
+      await _cancelRecorder();
       return;
     }
     setState(() {
@@ -187,7 +197,13 @@ class _LessonScreenState extends State<LessonScreen> {
     await Future<void>.delayed(_recordWindow);
     if (!mounted || _runId != run) return; // skip already cancelled recording
 
-    await _recorder.stop();
+    try {
+      await _recorder.stop();
+    } on Exception {
+      _recording = false;
+      if (mounted) setState(() => _hint = _Hint.none);
+      return; // nothing usable was captured
+    }
     _recording = false;
     if (mounted) setState(() => _hint = _Hint.none);
     final attempt = await widget.progress.recordAttempt(
@@ -200,24 +216,38 @@ class _LessonScreenState extends State<LessonScreen> {
     unawaited(_scoreAttempt(attempt, word));
   }
 
+  Future<void> _cancelRecorder() async {
+    try {
+      await _recorder.cancel();
+    } on Exception {
+      // Cancelling a dead recorder is not worth surfacing.
+    }
+  }
+
   Future<void> _scoreAttempt(Attempt attempt, Word word) async {
-    final distractors = _lesson.words
-        .where((w) => w.id != word.id)
-        .map((w) => w.en)
-        .toList();
-    final result = await widget.scorer.score(
-      filePath: attempt.filePath,
-      expected: word.en,
-      distractors: distractors,
-    );
-    if (result == null) return; // no model installed → parent grades
-    await widget.progress.setAutoResult(
-      attempt.id,
-      autoScore: result.autoScore,
-      confidence: result.confidence,
-      transcript: result.transcript,
-      reviewInterval: widget.prefs.reviewIntervalLessons,
-    );
+    // Catch-all: this runs unawaited in the background, and any failure must
+    // mean "the attempt stays in the parent's review inbox", never an error.
+    try {
+      final distractors = _lesson.words
+          .where((w) => w.id != word.id)
+          .map((w) => w.en)
+          .toList();
+      final result = await widget.scorer.score(
+        filePath: attempt.filePath,
+        expected: word.en,
+        distractors: distractors,
+      );
+      if (result == null) return; // no model installed → parent grades
+      await widget.progress.setAutoResult(
+        attempt.id,
+        autoScore: result.autoScore,
+        confidence: result.confidence,
+        transcript: result.transcript,
+        reviewInterval: widget.prefs.reviewIntervalLessons,
+      );
+    } on Object {
+      // Parent grading remains the safety net.
+    }
   }
 
   void _advance() {
@@ -226,7 +256,7 @@ class _LessonScreenState extends State<LessonScreen> {
     if (_recording) {
       _recording = false;
       // Skipped mid-answer: the audio is ambiguous, discard it.
-      _recorder.cancel();
+      _cancelRecorder();
     }
     _audio.stop();
     if (_passIndex + 1 >= _lesson.passes.length) {

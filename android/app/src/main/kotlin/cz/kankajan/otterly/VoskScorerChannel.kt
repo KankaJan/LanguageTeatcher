@@ -36,15 +36,27 @@ class VoskScorerChannel : MethodChannel.MethodCallHandler {
                     return
                 }
                 executor.execute {
+                    // Throwable, not Exception: the Vosk/JNA native bridge
+                    // fails with Errors (UnsatisfiedLinkError, native aborts
+                    // on a bad model) and an uncaught Error on this thread
+                    // would kill the whole app. Any failure here must instead
+                    // surface as a PlatformException, which the Dart side
+                    // swallows — the attempt then simply stays parent-graded.
                     try {
                         // Switching language packs loads a different model.
                         if (model == null || modelPath != path) {
+                            if (!looksLikeVoskModel(File(path))) {
+                                throw IllegalStateException(
+                                    "no Vosk model at $path")
+                            }
                             model?.close()
+                            model = null
+                            modelPath = null
                             model = Model(path)
                             modelPath = path
                         }
                         mainHandler.post { result.success(true) }
-                    } catch (e: Exception) {
+                    } catch (e: Throwable) {
                         mainHandler.post { result.error("init_failed", e.message, null) }
                     }
                 }
@@ -65,13 +77,21 @@ class VoskScorerChannel : MethodChannel.MethodCallHandler {
                     try {
                         val out = score(loaded, path, grammar)
                         mainHandler.post { result.success(out) }
-                    } catch (e: Exception) {
+                    } catch (e: Throwable) {
                         mainHandler.post { result.error("score_failed", e.message, null) }
                     }
                 }
             }
             else -> result.notImplemented()
         }
+    }
+
+    /** A Vosk model directory contains an acoustic model and configs. */
+    private fun looksLikeVoskModel(dir: File): Boolean {
+        if (!dir.isDirectory) return false
+        val entries = dir.list()?.toSet() ?: return false
+        return "am" in entries || "conf" in entries || "mfcc.conf" in entries ||
+            "final.mdl" in entries
     }
 
     private fun score(model: Model, path: String, grammar: String): Map<String, Any> {
