@@ -1,11 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:record/record.dart';
 
 import '../logic/lesson_builder.dart';
+import '../models/progress.dart';
 import '../models/vocabulary.dart';
 import '../services/app_prefs.dart';
 import '../services/progress_store.dart';
 import '../services/recording_store.dart';
+import '../services/speech_scorer.dart';
 import '../services/word_audio.dart';
 import '../widgets/emoji_card.dart';
 import 'celebration_screen.dart';
@@ -25,12 +29,14 @@ class LessonScreen extends StatefulWidget {
     required this.prefs,
     required this.recordings,
     required this.progress,
+    required this.scorer,
   });
 
   final Vocabulary vocabulary;
   final AppPrefs prefs;
   final RecordingStore recordings;
   final ProgressStore progress;
+  final SpeechScorer scorer;
 
   @override
   State<LessonScreen> createState() => _LessonScreenState();
@@ -151,10 +157,15 @@ class _LessonScreenState extends State<LessonScreen> {
     widget.progress.attemptsDirectory.createSync(recursive: true);
     final path = '${widget.progress.attemptsDirectory.path}/'
         'l${_lessonNumber}_${word.id}_r${_repetitionNumber(_passIndex)}_'
-        '${DateTime.now().millisecondsSinceEpoch}.m4a';
+        '${DateTime.now().millisecondsSinceEpoch}.wav';
 
+    // 16 kHz mono PCM WAV: what the on-device recognizer consumes.
     await _recorder.start(
-      const RecordConfig(encoder: AudioEncoder.aacLc),
+      const RecordConfig(
+        encoder: AudioEncoder.wav,
+        sampleRate: 16000,
+        numChannels: 1,
+      ),
       path: path,
     );
     if (!mounted || _runId != run) {
@@ -172,11 +183,33 @@ class _LessonScreenState extends State<LessonScreen> {
     await _recorder.stop();
     _recording = false;
     if (mounted) setState(() => _hint = _Hint.none);
-    await widget.progress.recordAttempt(
+    final attempt = await widget.progress.recordAttempt(
       wordId: word.id,
       lesson: _lessonNumber,
       repetition: _repetitionNumber(_passIndex),
       filePath: path,
+    );
+    // Score in the background; the lesson never waits for the recognizer.
+    unawaited(_scoreAttempt(attempt, word));
+  }
+
+  Future<void> _scoreAttempt(Attempt attempt, Word word) async {
+    final distractors = _lesson.words
+        .where((w) => w.id != word.id)
+        .map((w) => w.en)
+        .toList();
+    final result = await widget.scorer.score(
+      filePath: attempt.filePath,
+      expected: word.en,
+      distractors: distractors,
+    );
+    if (result == null) return; // no model installed → parent grades (M3 mode)
+    await widget.progress.setAutoResult(
+      attempt.id,
+      autoScore: result.autoScore,
+      confidence: result.confidence,
+      transcript: result.transcript,
+      reviewInterval: widget.prefs.reviewIntervalLessons,
     );
   }
 

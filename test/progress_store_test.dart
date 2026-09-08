@@ -135,6 +135,80 @@ void main() {
     expect(a2.id, isNot(a1.id));
   });
 
+  test('confident auto scores drive the state like adult grades', () async {
+    final a1 = await attempt('dog', 1, 2);
+    final a2 = await attempt('dog', 1, 3);
+    await store.setAutoResult(a1.id,
+        autoScore: 1, confidence: 0.9, transcript: 'dog', reviewInterval: 5);
+    await store.setAutoResult(a2.id,
+        autoScore: 1, confidence: 0.8, transcript: 'dog', reviewInterval: 5);
+    await store.completeLesson(lesson: 1, wordIds: ['dog'], reviewInterval: 5);
+
+    final p = store.wordStates['dog']!;
+    expect(p.state, WordState.known);
+    expect(p.lastAvgScore, 1.0);
+    expect(store.pendingAttempts, isEmpty,
+        reason: 'confidently scored attempts skip the inbox');
+  });
+
+  test('an unsure auto result keeps the attempt in the inbox', () async {
+    final a1 = await attempt('dog', 1, 2);
+    await store.setAutoResult(a1.id,
+        autoScore: null,
+        confidence: 0.3,
+        transcript: 'dock',
+        reviewInterval: 5);
+
+    expect(store.pendingAttempts.map((a) => a.id), [a1.id]);
+    expect(store.pendingAttempts.single.wasUnsure, isTrue);
+  });
+
+  test('a late confident auto fail demotes a provisionally known word',
+      () async {
+    final a1 = await attempt('dog', 1, 2);
+    await store.completeLesson(lesson: 1, wordIds: ['dog'], reviewInterval: 5);
+    expect(store.wordStates['dog']!.state, WordState.known);
+
+    await store.setAutoResult(a1.id,
+        autoScore: 0, confidence: 0.9, transcript: 'cat', reviewInterval: 5);
+
+    final p = store.wordStates['dog']!;
+    expect(p.state, WordState.learning);
+    expect(p.dueLesson, 2);
+  });
+
+  test('parent grade overrides a confident auto score', () async {
+    final a1 = await attempt('dog', 1, 2);
+    await store.completeLesson(lesson: 1, wordIds: ['dog'], reviewInterval: 5);
+    await store.setAutoResult(a1.id,
+        autoScore: 0, confidence: 0.9, transcript: 'cat', reviewInterval: 5);
+    expect(store.wordStates['dog']!.state, WordState.learning);
+
+    await store.gradeAttempt(a1.id, correct: true, reviewInterval: 5);
+
+    final p = store.wordStates['dog']!;
+    expect(p.state, WordState.known,
+        reason: 'the human heard it right; adultScore wins over autoScore');
+  });
+
+  test('a version-1 progress file (no auto fields) still loads', () async {
+    store.file.parent.createSync(recursive: true);
+    store.file.writeAsStringSync('''
+      {"version": 1, "lessons_completed": 3, "next_attempt_id": 2,
+       "words": {"dog": {"state": "learning", "due_lesson": 4,
+                          "source_lesson": 3, "last_avg_score": 0.5}},
+       "attempts": [{"id": 1, "word_id": "dog", "lesson": 3, "repetition": 2,
+                     "file": "x.wav", "created_at": "2026-09-01T10:00:00.000",
+                     "adult_score": null}]}
+    ''');
+    final reloaded = makeStore();
+    await reloaded.load();
+
+    expect(reloaded.lessonsCompleted, 3);
+    expect(reloaded.attempts.single.autoScore, isNull);
+    expect(reloaded.pendingAttempts, hasLength(1));
+  });
+
   test('reset wipes state and attempt recordings', () async {
     await attempt('dog', 1, 2);
     await store.completeLesson(lesson: 1, wordIds: ['dog'], reviewInterval: 5);

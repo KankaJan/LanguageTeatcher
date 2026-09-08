@@ -102,6 +102,7 @@ class _ReviewInboxScreenState extends State<ReviewInboxScreen> {
                   word: _wordsById[attempt.wordId]!,
                   vocabulary: widget.vocabulary,
                   lesson: attempt.lesson,
+                  unsureTranscript: attempt.wasUnsure ? attempt.transcript : null,
                   isPlaying: _playingAttemptId == attempt.id,
                   onPlay: () => _play(attempt.id, attempt.filePath),
                   onGrade: (correct) => _grade(attempt.id, correct),
@@ -119,6 +120,7 @@ class _AttemptTile extends StatelessWidget {
     required this.word,
     required this.vocabulary,
     required this.lesson,
+    required this.unsureTranscript,
     required this.isPlaying,
     required this.onPlay,
     required this.onGrade,
@@ -127,17 +129,26 @@ class _AttemptTile extends StatelessWidget {
   final Word word;
   final Vocabulary vocabulary;
   final int lesson;
+
+  /// The recognizer's uncertain guess, when it ran but couldn't decide.
+  final String? unsureTranscript;
+
   final bool isPlaying;
   final VoidCallback onPlay;
   final ValueChanged<bool> onGrade;
 
   @override
   Widget build(BuildContext context) {
+    final unsure = unsureTranscript;
     return ListTile(
       leading: Text(vocabulary.emojiFor(word),
           style: const TextStyle(fontSize: 24)),
       title: Text('${word.cz} — ${word.en}'),
-      subtitle: Text('Lekce $lesson'),
+      subtitle: Text(unsure == null
+          ? 'Lekce $lesson'
+          : unsure.isEmpty || unsure == '[unk]'
+              ? 'Lekce $lesson · rozpoznávání si není jisté (ticho?)'
+              : 'Lekce $lesson · rozpoznávání si není jisté, slyšelo „$unsure“'),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

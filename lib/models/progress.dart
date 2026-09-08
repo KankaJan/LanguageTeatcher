@@ -2,8 +2,12 @@
 enum WordState { learning, known }
 
 /// One recorded answer from the child: a production pass of a lesson.
-/// [adultScore] is null until the parent grades it in the review inbox
-/// (milestone M4 adds an automatic score with confidence alongside).
+///
+/// [adultScore] is set when the parent grades it in the review inbox.
+/// [autoScore] is set only when the speech recognizer was *confident*
+/// (an unsure recognition leaves it null and stores just [transcript] and
+/// [confidence] so the inbox can show the machine's uncertain guess).
+/// The parent's grade always outranks the machine: see [effectiveScore].
 class Attempt {
   Attempt({
     required this.id,
@@ -13,6 +17,9 @@ class Attempt {
     required this.filePath,
     required this.createdAt,
     this.adultScore,
+    this.autoScore,
+    this.confidence,
+    this.transcript,
   });
 
   final int id;
@@ -22,8 +29,18 @@ class Attempt {
   final String filePath;
   final DateTime createdAt;
   int? adultScore;
+  int? autoScore;
+  double? confidence;
+  String? transcript;
 
-  bool get isPending => adultScore == null;
+  /// The score that counts: parent override first, confident auto second.
+  int? get effectiveScore => adultScore ?? autoScore;
+
+  /// Needs a human: no parent grade and no confident automatic one.
+  bool get needsReview => effectiveScore == null;
+
+  /// The recognizer ran but wasn't confident enough to score.
+  bool get wasUnsure => autoScore == null && transcript != null;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -33,6 +50,9 @@ class Attempt {
         'file': filePath,
         'created_at': createdAt.toIso8601String(),
         'adult_score': adultScore,
+        'auto_score': autoScore,
+        'confidence': confidence,
+        'transcript': transcript,
       };
 
   factory Attempt.fromJson(Map<String, dynamic> json) => Attempt(
@@ -43,6 +63,9 @@ class Attempt {
         filePath: json['file'] as String,
         createdAt: DateTime.parse(json['created_at'] as String),
         adultScore: json['adult_score'] as int?,
+        autoScore: json['auto_score'] as int?,
+        confidence: (json['confidence'] as num?)?.toDouble(),
+        transcript: json['transcript'] as String?,
       );
 }
 

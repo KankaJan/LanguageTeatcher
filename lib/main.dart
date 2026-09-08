@@ -4,8 +4,10 @@ import 'package:flutter/services.dart';
 import 'models/vocabulary.dart';
 import 'screens/home_screen.dart';
 import 'services/app_prefs.dart';
+import 'services/model_manager.dart';
 import 'services/progress_store.dart';
 import 'services/recording_store.dart';
+import 'services/speech_scorer.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,11 +20,14 @@ Future<void> main() async {
   final prefs = await AppPrefs.load();
   final recordings = await RecordingStore.open();
   final progress = await ProgressStore.open();
+  final models = await ModelManager.open();
   runApp(LanguageTeatcherApp(
     vocabulary: vocabulary,
     prefs: prefs,
     recordings: recordings,
     progress: progress,
+    models: models,
+    scorer: VoskScorer(models),
   ));
 }
 
@@ -33,12 +38,16 @@ class LanguageTeatcherApp extends StatelessWidget {
     required this.prefs,
     required this.recordings,
     required this.progress,
+    required this.models,
+    required this.scorer,
   });
 
   final Vocabulary vocabulary;
   final AppPrefs prefs;
   final RecordingStore recordings;
   final ProgressStore progress;
+  final ModelManager models;
+  final SpeechScorer scorer;
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +63,8 @@ class LanguageTeatcherApp extends StatelessWidget {
         prefs: prefs,
         recordings: recordings,
         progress: progress,
+        models: models,
+        scorer: scorer,
       ),
     );
   }

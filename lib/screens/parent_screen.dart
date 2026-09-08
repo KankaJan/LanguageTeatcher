@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/progress.dart';
 import '../models/vocabulary.dart';
 import '../services/app_prefs.dart';
+import '../services/model_manager.dart';
 import '../services/progress_store.dart';
 import '../services/recording_store.dart';
 import 'recording_studio_screen.dart';
@@ -18,12 +19,14 @@ class ParentScreen extends StatefulWidget {
     required this.prefs,
     required this.recordings,
     required this.progress,
+    required this.models,
   });
 
   final Vocabulary vocabulary;
   final AppPrefs prefs;
   final RecordingStore recordings;
   final ProgressStore progress;
+  final ModelManager models;
 
   @override
   State<ParentScreen> createState() => _ParentScreenState();
@@ -215,6 +218,64 @@ class _ParentScreenState extends State<ParentScreen> {
                     ),
                   ],
                 ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: ListenableBuilder(
+                listenable: widget.models,
+                builder: (context, _) {
+                  final models = widget.models;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Rozpoznávání řeči',
+                          style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 12),
+                      switch (models.status) {
+                        ModelStatus.ready => const Text(
+                            'Model je nainstalovaný. Jasné odpovědi se '
+                            'hodnotí samy; nejisté vám dál chodí do '
+                            'kontroly výslovnosti a vaše hodnocení má vždy '
+                            'přednost.'),
+                        ModelStatus.downloading => Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Stahuji model…'),
+                              const SizedBox(height: 8),
+                              LinearProgressIndicator(value: models.progress),
+                            ],
+                          ),
+                        ModelStatus.absent => Text(
+                            'Bez modelu hodnotíte všechny odpovědi ručně. '
+                            'Stažením modelu '
+                            '(~${ModelManager.approximateSizeMb} MB, '
+                            'jednorázově) se budou jasné odpovědi hodnotit '
+                            'automaticky přímo v telefonu — lekce pak '
+                            'nepotřebují internet.'
+                            '${models.error == null ? '' : '\n\nStahování se nepodařilo: ${models.error}'}'),
+                      },
+                      const SizedBox(height: 12),
+                      switch (models.status) {
+                        ModelStatus.ready => OutlinedButton.icon(
+                            icon: const Icon(Icons.delete_outline),
+                            label: const Text('Odebrat model'),
+                            onPressed: models.delete,
+                          ),
+                        ModelStatus.downloading => const SizedBox.shrink(),
+                        ModelStatus.absent => FilledButton.icon(
+                            icon: const Icon(Icons.download),
+                            label: Text('Stáhnout model '
+                                '(~${ModelManager.approximateSizeMb} MB)'),
+                            onPressed: models.download,
+                          ),
+                      },
+                    ],
+                  );
+                },
               ),
             ),
           ),

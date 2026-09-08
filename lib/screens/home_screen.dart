@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../models/vocabulary.dart';
 import '../services/app_prefs.dart';
+import '../services/model_manager.dart';
 import '../services/progress_store.dart';
 import '../services/recording_store.dart';
+import '../services/speech_scorer.dart';
 import 'lesson_screen.dart';
 import 'parent_screen.dart';
 
@@ -16,12 +18,16 @@ class HomeScreen extends StatelessWidget {
     required this.prefs,
     required this.recordings,
     required this.progress,
+    required this.models,
+    required this.scorer,
   });
 
   final Vocabulary vocabulary;
   final AppPrefs prefs;
   final RecordingStore recordings;
   final ProgressStore progress;
+  final ModelManager models;
+  final SpeechScorer scorer;
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +51,7 @@ class HomeScreen extends StatelessWidget {
                             prefs: prefs,
                             recordings: recordings,
                             progress: progress,
+                            scorer: scorer,
                           ),
                         ),
                       );
@@ -67,6 +74,7 @@ class HomeScreen extends StatelessWidget {
                         prefs: prefs,
                         recordings: recordings,
                         progress: progress,
+                        models: models,
                       ),
                     ),
                   );
