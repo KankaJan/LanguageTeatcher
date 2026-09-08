@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:language_teatcher/logic/open_moji.dart';
-import 'package:language_teatcher/models/vocabulary.dart';
+import 'package:otterly/logic/open_moji.dart';
+import 'package:otterly/models/vocabulary.dart';
 
 void main() {
   test('codepoint naming matches OpenMoji conventions', () {

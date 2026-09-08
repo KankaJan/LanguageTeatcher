@@ -21,7 +21,7 @@ Future<void> main() async {
   final recordings = await RecordingStore.open();
   final progress = await ProgressStore.open();
   final models = await ModelManager.open();
-  runApp(LanguageTeatcherApp(
+  runApp(OtterlyApp(
     vocabulary: vocabulary,
     prefs: prefs,
     recordings: recordings,
@@ -31,8 +31,8 @@ Future<void> main() async {
   ));
 }
 
-class LanguageTeatcherApp extends StatelessWidget {
-  const LanguageTeatcherApp({
+class OtterlyApp extends StatelessWidget {
+  const OtterlyApp({
     super.key,
     required this.vocabulary,
     required this.prefs,
@@ -52,7 +52,7 @@ class LanguageTeatcherApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'LanguageTeatcher',
+      title: 'Otterly',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,

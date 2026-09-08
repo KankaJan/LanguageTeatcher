@@ -1,5 +1,5 @@
-name: language_teatcher
-description: "Voice-only English vocabulary trainer for a Czech-speaking toddler."
+name: otterly
+description: "Otterly — voice-only vocabulary trainer for toddlers."
 publish_to: 'none'
 
 version: 1.0.0+2

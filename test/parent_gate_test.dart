@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:language_teatcher/widgets/parent_gate.dart';
+import 'package:otterly/widgets/parent_gate.dart';
 
 void main() {
   final t0 = DateTime(2026, 1, 1, 12, 0, 0);

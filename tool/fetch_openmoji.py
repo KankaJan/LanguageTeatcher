@@ -46,10 +46,15 @@ def fetch(name: str) -> bytes | None:
         return None
 
 
+# App artwork outside the vocabulary (mascot etc.).
+EXTRA_EMOJIS = ["🦦"]
+
+
 def main() -> int:
     data = json.loads((ROOT / "content" / "vocabulary.json").read_text())
     emojis = {c["emoji"] for c in data["categories"]}
     emojis |= {w["emoji"] for w in data["words"] if w.get("emoji")}
+    emojis |= set(EXTRA_EMOJIS)
 
     ASSETS.mkdir(parents=True, exist_ok=True)
     available: set[str] = set()

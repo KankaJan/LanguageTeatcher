@@ -176,6 +176,7 @@ const openMojiAvailable = <String>{
   '1F993',
   '1F994',
   '1F998',
+  '1F9A6',
   '1F9B5',
   '1F9B6',
   '1F9B7',

@@ -1,4 +1,4 @@
-# LanguageTeatcher — Build Plan
+# Otterly — Build Plan
 
 A mobile app that teaches a 3-year-old Czech-speaking child English vocabulary — **by voice and pictures only, no written words in front of the child**.
 

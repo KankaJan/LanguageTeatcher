@@ -1,4 +1,4 @@
-package cz.kankajan.language_teatcher
+package cz.kankajan.otterly
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine

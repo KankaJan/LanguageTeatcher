@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:language_teatcher/logic/lesson_builder.dart';
-import 'package:language_teatcher/models/progress.dart';
-import 'package:language_teatcher/models/vocabulary.dart';
+import 'package:otterly/logic/lesson_builder.dart';
+import 'package:otterly/models/progress.dart';
+import 'package:otterly/models/vocabulary.dart';
 
 List<Word> fakeWords(int count) => [
       for (var i = 0; i < count; i++)
@@ -101,25 +101,19 @@ void main() {
   });
 
   group('buildLesson', () {
-    test('first block presents, later blocks are production', () {
+    test('pass count is words times repetitions', () {
       final lesson = buildLesson(
         words: fakeWords(4),
         repetitionsPerWord: 3,
       );
       expect(lesson.passes, hasLength(12));
-      for (var i = 0; i < 4; i++) {
-        expect(lesson.passes[i].type, PassType.presentation);
-      }
-      for (var i = 4; i < 12; i++) {
-        expect(lesson.passes[i].type, PassType.production);
-      }
     });
 
     test('each word appears exactly R times', () {
       final words = fakeWords(5);
       final lesson = buildLesson(words: words, repetitionsPerWord: 3);
       for (final word in words) {
-        expect(lesson.passes.where((p) => p.word.id == word.id).length, 3,
+        expect(lesson.passes.where((p) => p.id == word.id).length, 3,
             reason: word.id);
       }
     });
@@ -130,24 +124,16 @@ void main() {
         repetitionsPerWord: 4,
       );
       for (var i = 1; i < lesson.passes.length; i++) {
-        expect(lesson.passes[i].word.id, isNot(lesson.passes[i - 1].word.id),
+        expect(lesson.passes[i].id, isNot(lesson.passes[i - 1].id),
             reason: 'position $i');
       }
     });
 
-    test('every word is presented before any of its production passes', () {
-      final lesson = buildLesson(
-        words: fakeWords(6),
-        repetitionsPerWord: 3,
-      );
-      final presented = <String>{};
-      for (final pass in lesson.passes) {
-        if (pass.type == PassType.presentation) {
-          presented.add(pass.word.id);
-        } else {
-          expect(presented, contains(pass.word.id));
-        }
-      }
+    test('the first block covers every word once, in lesson order', () {
+      final words = fakeWords(6);
+      final lesson = buildLesson(words: words, repetitionsPerWord: 3);
+      expect(lesson.passes.take(6).map((w) => w.id),
+          words.map((w) => w.id));
     });
   });
 }

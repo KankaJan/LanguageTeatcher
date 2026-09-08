@@ -1,4 +1,4 @@
-package cz.kankajan.language_teatcher
+package cz.kankajan.otterly
 
 import android.os.Handler
 import android.os.Looper
@@ -17,7 +17,7 @@ import java.util.concurrent.Executors
  */
 class VoskScorerChannel : MethodChannel.MethodCallHandler {
     companion object {
-        const val NAME = "language_teatcher/vosk"
+        const val NAME = "otterly/vosk"
         private const val SAMPLE_RATE = 16000.0f
         private const val CHUNK_BYTES = 8000
     }

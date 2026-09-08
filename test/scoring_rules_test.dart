@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:language_teatcher/services/speech_scorer.dart';
+import 'package:otterly/services/speech_scorer.dart';
 
 void main() {
   AutoResult eval(String transcript, double confidence,

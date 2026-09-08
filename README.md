@@ -1,4 +1,4 @@
-# LanguageTeatcher
+# Otterly 🦦
 
 A mobile app (Android first, Flutter) that teaches a 3-year-old Czech-speaking
 child English vocabulary — **voice and pictures only, no written words in child

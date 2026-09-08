@@ -37,9 +37,8 @@ class _CelebrationScreenState extends State<CelebrationScreen>
   Future<void> _cheer() async {
     await Future<void>.delayed(const Duration(milliseconds: 400));
     if (!mounted) return;
+    // Praise is spoken in the child's own language only (parent feedback).
     await _tts.speakCzech('Hurá! Výborně!');
-    if (!mounted) return;
-    await _tts.speakEnglish('Great job!');
   }
 
   void _close() {

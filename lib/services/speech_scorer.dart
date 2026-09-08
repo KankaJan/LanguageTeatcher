@@ -69,7 +69,7 @@ abstract class SpeechScorer {
 class VoskScorer implements SpeechScorer {
   VoskScorer(this.models);
 
-  static const _channel = MethodChannel('language_teatcher/vosk');
+  static const _channel = MethodChannel('otterly/vosk');
 
   final ModelManager models;
   bool _initialized = false;

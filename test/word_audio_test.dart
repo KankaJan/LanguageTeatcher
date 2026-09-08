@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:language_teatcher/models/vocabulary.dart';
-import 'package:language_teatcher/services/recording_store.dart';
-import 'package:language_teatcher/services/tts_service.dart';
-import 'package:language_teatcher/services/word_audio.dart';
+import 'package:otterly/models/vocabulary.dart';
+import 'package:otterly/services/recording_store.dart';
+import 'package:otterly/services/tts_service.dart';
+import 'package:otterly/services/word_audio.dart';
 
 class FakeSynth implements SpeechSynthesizer {
   final List<(String, String)> spoken = [];

@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:language_teatcher/models/progress.dart';
-import 'package:language_teatcher/services/progress_store.dart';
+import 'package:otterly/models/progress.dart';
+import 'package:otterly/services/progress_store.dart';
 
 void main() {
   late Directory tempRoot;

@@ -1,31 +1,16 @@
 import '../models/progress.dart';
 import '../models/vocabulary.dart';
 
-/// What a single step of the lesson does with its word.
-enum PassType {
-  /// Show the picture, speak Czech then English, invite the child to repeat.
-  presentation,
-
-  /// Speak Czech and prompt the child to say the English word; the answer is
-  /// recorded and later scored.
-  production,
-}
-
-/// One step of a lesson.
-class LessonPass {
-  const LessonPass({required this.word, required this.type});
-
-  final Word word;
-  final PassType type;
-}
-
 /// A day's lesson: [words] are the vocabulary items covered, [passes] is the
-/// exact sequence of steps the child goes through.
+/// exact sequence the child goes through. Every pass is identical — hear the
+/// word in the source language, then the target language, then repeat it
+/// aloud (recorded) — per the parent's feedback: no separate presentation
+/// phase and no interrupting prompt.
 class Lesson {
   const Lesson({required this.words, required this.passes});
 
   final List<Word> words;
-  final List<LessonPass> passes;
+  final List<Word> passes;
 }
 
 /// Picks the words for the next lesson, in priority order:
@@ -85,21 +70,17 @@ List<Word> selectWords({
 /// Builds the pass sequence for the selected [words]: each word appears
 /// [repetitionsPerWord] times, interleaved Duolingo-style (pass block p is
 /// the word list rotated by p) so the same word is never drilled
-/// back-to-back. The first block presents each word; every later block is a
-/// production pass where the child answers.
+/// back-to-back.
 Lesson buildLesson({
   required List<Word> words,
   required int repetitionsPerWord,
 }) {
   assert(repetitionsPerWord > 0);
 
-  final passes = <LessonPass>[
+  final passes = <Word>[
     for (var pass = 0; pass < repetitionsPerWord; pass++)
       for (var i = 0; i < words.length; i++)
-        LessonPass(
-          word: words[(i + pass) % words.length],
-          type: pass == 0 ? PassType.presentation : PassType.production,
-        ),
+        words[(i + pass) % words.length],
   ];
 
   return Lesson(words: List.unmodifiable(words), passes: passes);

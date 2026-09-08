@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../logic/open_moji.dart';
 import '../models/vocabulary.dart';
 import '../services/app_prefs.dart';
 import '../services/model_manager.dart';
@@ -41,7 +42,7 @@ class HomeScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text('🦁', style: TextStyle(fontSize: 96)),
+                  const _OtterMascot(),
                   const SizedBox(height: 40),
                   _PlayButton(
                     onPressed: () {
@@ -95,6 +96,22 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _OtterMascot extends StatelessWidget {
+  const _OtterMascot();
+
+  @override
+  Widget build(BuildContext context) {
+    final asset = openMojiAssetFor('🦦');
+    return SizedBox(
+      width: 140,
+      height: 140,
+      child: asset != null
+          ? Image.asset(asset, fit: BoxFit.contain)
+          : const FittedBox(child: Text('🦦', style: TextStyle(fontSize: 96))),
     );
   }
 }

@@ -17,11 +17,11 @@ import 'celebration_screen.dart';
 enum _Hint { none, repeatAfterMe, listening }
 
 /// The child-facing lesson. Words are chosen adaptively (failed words first,
-/// due reviews, then new words). The first appearance of a word presents it
-/// (picture, Czech, English); later appearances are production passes: the
-/// child is prompted in Czech to say the English word, the answer is recorded
-/// for scoring, and the correct English audio always plays as gentle closure.
-/// Tapping anywhere skips ahead. No text is ever shown.
+/// due reviews, then new words). Every pass is the same simple rhythm: the
+/// picture appears, the word is spoken in the source language, then in the
+/// target language, and the child repeats it aloud while the mic records —
+/// no prompts, no separate teaching phase. Tapping anywhere skips ahead.
+/// No text is ever shown.
 class LessonScreen extends StatefulWidget {
   const LessonScreen({
     super.key,
@@ -51,7 +51,6 @@ class _LessonScreenState extends State<LessonScreen> {
     Color(0xFFF3E8FD),
   ];
 
-  static const _czechPrompt = 'A jak se to řekne anglicky?';
   static const _recordWindow = Duration(seconds: 4);
 
   late final int _lessonNumber = widget.progress.nextLessonNumber;
@@ -100,18 +99,25 @@ class _LessonScreenState extends State<LessonScreen> {
 
   /// 1-based repetition number of the current pass's word.
   int _repetitionNumber(int passIndex) {
-    final word = _lesson.passes[passIndex].word;
+    final word = _lesson.passes[passIndex];
     var count = 0;
     for (var i = 0; i <= passIndex; i++) {
-      if (_lesson.passes[i].word.id == word.id) count++;
+      if (_lesson.passes[i].id == word.id) count++;
     }
     return count;
   }
 
+  bool _isLastPassOfWord(int index) {
+    final id = _lesson.passes[index].id;
+    for (var i = index + 1; i < _lesson.passes.length; i++) {
+      if (_lesson.passes[i].id == id) return false;
+    }
+    return true;
+  }
+
   Future<void> _runPass() async {
     final run = _runId;
-    final pass = _lesson.passes[_passIndex];
-    final word = pass.word;
+    final word = _lesson.passes[_passIndex];
 
     Future<bool> interrupted(Duration pause) async {
       await Future<void>.delayed(pause);
@@ -120,27 +126,15 @@ class _LessonScreenState extends State<LessonScreen> {
 
     bool stale() => !mounted || _runId != run;
 
+    // The whole pass: source word → target word → child repeats (recorded).
     if (await interrupted(const Duration(milliseconds: 700))) return;
     await _audio.speak(word, WordLang.cz);
+    if (await interrupted(const Duration(milliseconds: 800))) return;
+    await _audio.speak(word, WordLang.en);
+    if (stale()) return;
+    await _captureAttempt(word, run);
     if (stale()) return;
 
-    if (pass.type == PassType.presentation) {
-      if (await interrupted(const Duration(milliseconds: 900))) return;
-      await _audio.speak(word, WordLang.en);
-      if (stale()) return;
-      setState(() => _hint = _Hint.repeatAfterMe);
-      if (await interrupted(const Duration(milliseconds: 2600))) return;
-    } else {
-      if (await interrupted(const Duration(milliseconds: 400))) return;
-      await _audio.tts.speak(_czechPrompt, WordLang.cz.ttsLocale);
-      if (stale()) return;
-      await _captureAttempt(word, run);
-      if (stale()) return;
-      // Always end with the correct English word — praise-through-modelling,
-      // never a failure sound.
-      await _audio.speak(word, WordLang.en);
-      if (await interrupted(const Duration(milliseconds: 600))) return;
-    }
     if (_isLastPassOfWord(_passIndex)) {
       // The word is done for today: a quick star burst as a reward.
       setState(() => _starBurst = true);
@@ -149,21 +143,13 @@ class _LessonScreenState extends State<LessonScreen> {
     _advance();
   }
 
-  bool _isLastPassOfWord(int index) {
-    final id = _lesson.passes[index].word.id;
-    for (var i = index + 1; i < _lesson.passes.length; i++) {
-      if (_lesson.passes[i].word.id == id) return false;
-    }
-    return true;
-  }
-
   Future<void> _captureAttempt(Word word, int run) async {
     _micAllowed ??= await _recorder.hasPermission();
     if (!mounted || _runId != run) return;
     if (_micAllowed != true) {
-      // Degrade to a listen-only pause so the lesson still flows.
+      // Degrade to a repeat-aloud pause so the lesson still flows.
       setState(() => _hint = _Hint.repeatAfterMe);
-      await Future<void>.delayed(const Duration(seconds: 2));
+      await Future<void>.delayed(const Duration(milliseconds: 2500));
       if (mounted) setState(() => _hint = _Hint.none);
       return;
     }
@@ -217,7 +203,7 @@ class _LessonScreenState extends State<LessonScreen> {
       expected: word.en,
       distractors: distractors,
     );
-    if (result == null) return; // no model installed → parent grades (M3 mode)
+    if (result == null) return; // no model installed → parent grades
     await widget.progress.setAutoResult(
       attempt.id,
       autoScore: result.autoScore,
@@ -265,7 +251,7 @@ class _LessonScreenState extends State<LessonScreen> {
     if (_lesson.passes.isEmpty) {
       return const Scaffold(backgroundColor: Color(0xFFFDF8F0));
     }
-    final word = _lesson.passes[_passIndex].word;
+    final word = _lesson.passes[_passIndex];
     final emoji = widget.vocabulary.emojiFor(word);
     final progress = (_passIndex + 1) / _lesson.passes.length;
 

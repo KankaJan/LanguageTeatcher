@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:language_teatcher/services/recording_store.dart';
+import 'package:otterly/services/recording_store.dart';
 
 void main() {
   late Directory tempRoot;

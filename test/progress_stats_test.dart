@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:language_teatcher/logic/progress_stats.dart';
-import 'package:language_teatcher/models/progress.dart';
-import 'package:language_teatcher/models/vocabulary.dart';
+import 'package:otterly/logic/progress_stats.dart';
+import 'package:otterly/models/progress.dart';
+import 'package:otterly/models/vocabulary.dart';
 
 Vocabulary fakeVocabulary() => Vocabulary(
       categories: const [

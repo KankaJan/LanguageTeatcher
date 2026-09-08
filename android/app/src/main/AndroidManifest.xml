@@ -2,7 +2,7 @@
     <!-- Parent recording studio captures the parent's voice. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <application
-        android:label="LanguageTeatcher"
+        android:label="Otterly"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
