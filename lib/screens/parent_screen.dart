@@ -1,24 +1,29 @@
 import 'package:flutter/material.dart';
 
+import '../models/progress.dart';
 import '../models/vocabulary.dart';
 import '../services/app_prefs.dart';
+import '../services/progress_store.dart';
 import '../services/recording_store.dart';
 import 'recording_studio_screen.dart';
+import 'review_inbox_screen.dart';
 
-/// Parent mode: progress overview, recording studio, and lesson settings.
-/// This is the one place where on-screen text is allowed — it is written in
-/// Czech for the parent.
+/// Parent mode: progress overview, pronunciation review inbox, recording
+/// studio, and lesson settings. This is the one place where on-screen text is
+/// allowed — it is written in Czech for the parent.
 class ParentScreen extends StatefulWidget {
   const ParentScreen({
     super.key,
     required this.vocabulary,
     required this.prefs,
     required this.recordings,
+    required this.progress,
   });
 
   final Vocabulary vocabulary;
   final AppPrefs prefs;
   final RecordingStore recordings;
+  final ProgressStore progress;
 
   @override
   State<ParentScreen> createState() => _ParentScreenState();
@@ -27,16 +32,11 @@ class ParentScreen extends StatefulWidget {
 class _ParentScreenState extends State<ParentScreen> {
   late int _wordsPerLesson = widget.prefs.wordsPerLesson;
   late int _repetitionsPerWord = widget.prefs.repetitionsPerWord;
+  late int _reviewInterval = widget.prefs.reviewIntervalLessons;
 
   @override
   Widget build(BuildContext context) {
     final vocabulary = widget.vocabulary;
-    final prefs = widget.prefs;
-    final total = vocabulary.orderedWords.length;
-    final completed = prefs.wordsCompleted;
-    final position = completed % total;
-    final nextWord = vocabulary.orderedWords[position];
-    final nextCategory = vocabulary.categoryOf(nextWord);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Rodičovská sekce')),
@@ -46,20 +46,82 @@ class _ParentScreenState extends State<ParentScreen> {
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Pokrok',
-                      style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 12),
-                  Text('Dokončených lekcí: ${prefs.lessonsCompleted}'),
-                  const SizedBox(height: 4),
-                  Text('Probraných slovíček: $completed'
-                      '${completed > total ? ' (slovník už proběhl celý)' : ' z $total'}'),
-                  const SizedBox(height: 4),
-                  Text(
-                      'Aktuální téma: ${nextCategory.emoji} ${nextCategory.cz}'),
-                ],
+              child: ListenableBuilder(
+                listenable: widget.progress,
+                builder: (context, _) {
+                  final states = widget.progress.wordStates;
+                  final total = vocabulary.orderedWords.length;
+                  final learning = states.values
+                      .where((p) => p.state == WordState.learning)
+                      .length;
+                  final known = states.values
+                      .where((p) => p.state == WordState.known)
+                      .length;
+                  final firstNew = vocabulary.orderedWords
+                      .where((w) => !states.containsKey(w.id))
+                      .firstOrNull;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Pokrok',
+                          style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 12),
+                      Text('Dokončených lekcí: '
+                          '${widget.progress.lessonsCompleted}'),
+                      const SizedBox(height: 4),
+                      Text('Probraných slovíček: ${states.length} z $total '
+                          '(naučených $known, procvičuje se $learning)'),
+                      const SizedBox(height: 4),
+                      Text(firstNew == null
+                          ? 'Celý slovník už byl probrán 🎉'
+                          : 'Aktuální téma: '
+                              '${vocabulary.categoryOf(firstNew).emoji} '
+                              '${vocabulary.categoryOf(firstNew).cz}'),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: ListenableBuilder(
+                listenable: widget.progress,
+                builder: (context, _) {
+                  final pending = widget.progress.pendingAttempts.length;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Kontrola výslovnosti',
+                          style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 12),
+                      Text(pending == 0
+                          ? 'Žádné odpovědi nečekají na ohodnocení.'
+                          : 'Na ohodnocení čeká $pending '
+                              '${pending == 1 ? 'odpověď' : pending < 5 ? 'odpovědi' : 'odpovědí'} '
+                              'z lekcí. Špatně ohodnocená slovíčka se vrátí '
+                              'v příští lekci.'),
+                      const SizedBox(height: 12),
+                      FilledButton.icon(
+                        icon: const Icon(Icons.rule),
+                        label: const Text('Otevřít kontrolu'),
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => ReviewInboxScreen(
+                                vocabulary: vocabulary,
+                                progress: widget.progress,
+                                prefs: widget.prefs,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -82,7 +144,7 @@ class _ParentScreenState extends State<ParentScreen> {
                     label: '$_wordsPerLesson',
                     onChanged: (value) {
                       setState(() => _wordsPerLesson = value.round());
-                      prefs.setWordsPerLesson(value.round());
+                      widget.prefs.setWordsPerLesson(value.round());
                     },
                   ),
                   const SizedBox(height: 8),
@@ -96,7 +158,21 @@ class _ParentScreenState extends State<ParentScreen> {
                     label: '$_repetitionsPerWord',
                     onChanged: (value) {
                       setState(() => _repetitionsPerWord = value.round());
-                      prefs.setRepetitionsPerWord(value.round());
+                      widget.prefs.setRepetitionsPerWord(value.round());
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Text('Naučená slovíčka se vrací po: '
+                      '$_reviewInterval lekcích'),
+                  Slider(
+                    value: _reviewInterval.toDouble(),
+                    min: 3,
+                    max: 10,
+                    divisions: 7,
+                    label: '$_reviewInterval',
+                    onChanged: (value) {
+                      setState(() => _reviewInterval = value.round());
+                      widget.prefs.setReviewIntervalLessons(value.round());
                     },
                   ),
                 ],
@@ -130,7 +206,7 @@ class _ParentScreenState extends State<ParentScreen> {
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => RecordingStudioScreen(
-                              vocabulary: widget.vocabulary,
+                              vocabulary: vocabulary,
                               store: widget.recordings,
                             ),
                           ),
@@ -152,7 +228,8 @@ class _ParentScreenState extends State<ParentScreen> {
                 builder: (context) => AlertDialog(
                   title: const Text('Smazat pokrok?'),
                   content: const Text(
-                      'Počítadlo lekcí a probraných slovíček se vynuluje.'),
+                      'Smaže se pokrok učení i nahrané odpovědi dítěte. '
+                      'Vaše nahrávky slovíček zůstanou.'),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(false),
@@ -166,8 +243,7 @@ class _ParentScreenState extends State<ParentScreen> {
                 ),
               );
               if (confirmed == true) {
-                await widget.prefs.resetProgress();
-                setState(() {});
+                await widget.progress.reset();
               }
             },
           ),

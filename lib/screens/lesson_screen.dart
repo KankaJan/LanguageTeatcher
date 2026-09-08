@@ -1,28 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:record/record.dart';
 
 import '../logic/lesson_builder.dart';
 import '../models/vocabulary.dart';
 import '../services/app_prefs.dart';
+import '../services/progress_store.dart';
 import '../services/recording_store.dart';
 import '../services/word_audio.dart';
 import '../widgets/emoji_card.dart';
 import 'celebration_screen.dart';
 
-/// The child-facing lesson: for each pass the picture fills the screen, the
-/// word is spoken in Czech, then in English, then a short "now you say it"
-/// pause with a pulsing hint. Tapping anywhere skips ahead to the next pass.
-/// No text is ever shown.
+enum _Hint { none, repeatAfterMe, listening }
+
+/// The child-facing lesson. Words are chosen adaptively (failed words first,
+/// due reviews, then new words). The first appearance of a word presents it
+/// (picture, Czech, English); later appearances are production passes: the
+/// child is prompted in Czech to say the English word, the answer is recorded
+/// for scoring, and the correct English audio always plays as gentle closure.
+/// Tapping anywhere skips ahead. No text is ever shown.
 class LessonScreen extends StatefulWidget {
   const LessonScreen({
     super.key,
     required this.vocabulary,
     required this.prefs,
     required this.recordings,
+    required this.progress,
   });
 
   final Vocabulary vocabulary;
   final AppPrefs prefs;
   final RecordingStore recordings;
+  final ProgressStore progress;
 
   @override
   State<LessonScreen> createState() => _LessonScreenState();
@@ -37,12 +45,19 @@ class _LessonScreenState extends State<LessonScreen> {
     Color(0xFFF3E8FD),
   ];
 
+  static const _czechPrompt = 'A jak se to řekne anglicky?';
+  static const _recordWindow = Duration(seconds: 4);
+
+  late final int _lessonNumber = widget.progress.nextLessonNumber;
   late final Lesson _lesson;
   late final WordAudioPlayer _audio =
       WordAudioPlayer(store: widget.recordings);
+  final AudioRecorder _recorder = AudioRecorder();
 
   int _passIndex = 0;
-  bool _repeatHintVisible = false;
+  _Hint _hint = _Hint.none;
+  bool? _micAllowed;
+  bool _recording = false;
 
   /// Incremented on every skip/advance so stale awaits stop acting.
   int _runId = 0;
@@ -50,44 +65,129 @@ class _LessonScreenState extends State<LessonScreen> {
   @override
   void initState() {
     super.initState();
-    _lesson = buildLesson(
+    final words = selectWords(
       orderedWords: widget.vocabulary.orderedWords,
-      wordsCompleted: widget.prefs.wordsCompleted,
+      progress: widget.progress.wordStates,
+      nextLesson: _lessonNumber,
       wordsPerLesson: widget.prefs.wordsPerLesson,
+    );
+    _lesson = buildLesson(
+      words: words,
       repetitionsPerWord: widget.prefs.repetitionsPerWord,
     );
-    WidgetsBinding.instance.addPostFrameCallback((_) => _runPass());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_lesson.passes.isEmpty) {
+        Navigator.of(context).pop();
+      } else {
+        _runPass();
+      }
+    });
   }
 
   @override
   void dispose() {
+    _recorder.dispose();
     _audio.dispose();
     super.dispose();
   }
 
+  /// 1-based repetition number of the current pass's word.
+  int _repetitionNumber(int passIndex) {
+    final word = _lesson.passes[passIndex].word;
+    var count = 0;
+    for (var i = 0; i <= passIndex; i++) {
+      if (_lesson.passes[i].word.id == word.id) count++;
+    }
+    return count;
+  }
+
   Future<void> _runPass() async {
     final run = _runId;
-    final word = _lesson.passes[_passIndex].word;
+    final pass = _lesson.passes[_passIndex];
+    final word = pass.word;
 
     Future<bool> interrupted(Duration pause) async {
       await Future<void>.delayed(pause);
       return !mounted || _runId != run;
     }
 
+    bool stale() => !mounted || _runId != run;
+
     if (await interrupted(const Duration(milliseconds: 700))) return;
     await _audio.speak(word, WordLang.cz);
-    if (await interrupted(const Duration(milliseconds: 900))) return;
-    await _audio.speak(word, WordLang.en);
-    if (!mounted || _runId != run) return;
+    if (stale()) return;
 
-    setState(() => _repeatHintVisible = true);
-    if (await interrupted(const Duration(milliseconds: 2600))) return;
+    if (pass.type == PassType.presentation) {
+      if (await interrupted(const Duration(milliseconds: 900))) return;
+      await _audio.speak(word, WordLang.en);
+      if (stale()) return;
+      setState(() => _hint = _Hint.repeatAfterMe);
+      if (await interrupted(const Duration(milliseconds: 2600))) return;
+    } else {
+      if (await interrupted(const Duration(milliseconds: 400))) return;
+      await _audio.tts.speak(_czechPrompt, WordLang.cz.ttsLocale);
+      if (stale()) return;
+      await _captureAttempt(word, run);
+      if (stale()) return;
+      // Always end with the correct English word — praise-through-modelling,
+      // never a failure sound.
+      await _audio.speak(word, WordLang.en);
+      if (await interrupted(const Duration(milliseconds: 600))) return;
+    }
     _advance();
+  }
+
+  Future<void> _captureAttempt(Word word, int run) async {
+    _micAllowed ??= await _recorder.hasPermission();
+    if (!mounted || _runId != run) return;
+    if (_micAllowed != true) {
+      // Degrade to a listen-only pause so the lesson still flows.
+      setState(() => _hint = _Hint.repeatAfterMe);
+      await Future<void>.delayed(const Duration(seconds: 2));
+      if (mounted) setState(() => _hint = _Hint.none);
+      return;
+    }
+
+    widget.progress.attemptsDirectory.createSync(recursive: true);
+    final path = '${widget.progress.attemptsDirectory.path}/'
+        'l${_lessonNumber}_${word.id}_r${_repetitionNumber(_passIndex)}_'
+        '${DateTime.now().millisecondsSinceEpoch}.m4a';
+
+    await _recorder.start(
+      const RecordConfig(encoder: AudioEncoder.aacLc),
+      path: path,
+    );
+    if (!mounted || _runId != run) {
+      await _recorder.cancel();
+      return;
+    }
+    setState(() {
+      _recording = true;
+      _hint = _Hint.listening;
+    });
+
+    await Future<void>.delayed(_recordWindow);
+    if (!mounted || _runId != run) return; // skip already cancelled recording
+
+    await _recorder.stop();
+    _recording = false;
+    if (mounted) setState(() => _hint = _Hint.none);
+    await widget.progress.recordAttempt(
+      wordId: word.id,
+      lesson: _lessonNumber,
+      repetition: _repetitionNumber(_passIndex),
+      filePath: path,
+    );
   }
 
   void _advance() {
     if (!mounted) return;
     _runId++;
+    if (_recording) {
+      _recording = false;
+      // Skipped mid-answer: the audio is ambiguous, discard it.
+      _recorder.cancel();
+    }
     _audio.stop();
     if (_passIndex + 1 >= _lesson.passes.length) {
       _finishLesson();
@@ -95,13 +195,17 @@ class _LessonScreenState extends State<LessonScreen> {
     }
     setState(() {
       _passIndex++;
-      _repeatHintVisible = false;
+      _hint = _Hint.none;
     });
     _runPass();
   }
 
   Future<void> _finishLesson() async {
-    await widget.prefs.recordLessonCompleted(_lesson.words.length);
+    await widget.progress.completeLesson(
+      lesson: _lessonNumber,
+      wordIds: _lesson.words.map((w) => w.id).toList(),
+      reviewInterval: widget.prefs.reviewIntervalLessons,
+    );
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const CelebrationScreen()),
@@ -110,6 +214,9 @@ class _LessonScreenState extends State<LessonScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_lesson.passes.isEmpty) {
+      return const Scaffold(backgroundColor: Color(0xFFFDF8F0));
+    }
     final word = _lesson.passes[_passIndex].word;
     final emoji = widget.vocabulary.emojiFor(word);
     final progress = (_passIndex + 1) / _lesson.passes.length;
@@ -164,12 +271,17 @@ class _LessonScreenState extends State<LessonScreen> {
                 ),
               ),
               SizedBox(
-                height: 96,
+                height: 110,
                 child: Center(
                   child: AnimatedOpacity(
-                    opacity: _repeatHintVisible ? 1 : 0,
+                    opacity: _hint == _Hint.none ? 0 : 1,
                     duration: const Duration(milliseconds: 300),
-                    child: const _PulsingHint(),
+                    child: _hint == _Hint.listening
+                        ? const _PulsingHint(
+                            emoji: '🎤',
+                            background: Color(0xFFFFCDD2),
+                          )
+                        : const _PulsingHint(emoji: '🗣️'),
                   ),
                 ),
               ),
@@ -181,9 +293,12 @@ class _LessonScreenState extends State<LessonScreen> {
   }
 }
 
-/// Pulsing "now you say it" hint shown after the English word is played.
+/// Pulsing audio hint: "repeat after me" (🗣️) or "I'm listening" (🎤).
 class _PulsingHint extends StatefulWidget {
-  const _PulsingHint();
+  const _PulsingHint({required this.emoji, this.background});
+
+  final String emoji;
+  final Color? background;
 
   @override
   State<_PulsingHint> createState() => _PulsingHintState();
@@ -208,7 +323,13 @@ class _PulsingHintState extends State<_PulsingHint>
   Widget build(BuildContext context) {
     return ScaleTransition(
       scale: _controller,
-      child: const Text('🗣️', style: TextStyle(fontSize: 56)),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: widget.background == null
+            ? null
+            : BoxDecoration(color: widget.background, shape: BoxShape.circle),
+        child: Text(widget.emoji, style: const TextStyle(fontSize: 52)),
+      ),
     );
   }
 }

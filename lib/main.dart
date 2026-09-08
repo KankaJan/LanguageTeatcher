@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'models/vocabulary.dart';
 import 'screens/home_screen.dart';
 import 'services/app_prefs.dart';
+import 'services/progress_store.dart';
 import 'services/recording_store.dart';
 
 Future<void> main() async {
@@ -16,10 +17,12 @@ Future<void> main() async {
   final vocabulary = Vocabulary.fromJsonString(vocabularyJson);
   final prefs = await AppPrefs.load();
   final recordings = await RecordingStore.open();
+  final progress = await ProgressStore.open();
   runApp(LanguageTeatcherApp(
     vocabulary: vocabulary,
     prefs: prefs,
     recordings: recordings,
+    progress: progress,
   ));
 }
 
@@ -29,11 +32,13 @@ class LanguageTeatcherApp extends StatelessWidget {
     required this.vocabulary,
     required this.prefs,
     required this.recordings,
+    required this.progress,
   });
 
   final Vocabulary vocabulary;
   final AppPrefs prefs;
   final RecordingStore recordings;
+  final ProgressStore progress;
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +53,7 @@ class LanguageTeatcherApp extends StatelessWidget {
         vocabulary: vocabulary,
         prefs: prefs,
         recordings: recordings,
+        progress: progress,
       ),
     );
   }

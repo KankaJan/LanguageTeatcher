@@ -192,7 +192,13 @@ A known word that fails its review is demoted back into rotation. If failed word
 alone exceed N, they are capped so at least one new word appears (keeps lessons
 from becoming pure remediation).
 
-### Data model (SQLite via drift)
+### Data model
+
+> **Implementation note (M3):** progress currently persists as a
+> schema-versioned JSON file (`progress.json`, atomic write-and-rename) plus
+> attempt recordings on disk — one child produces a few hundred small records,
+> which doesn't justify a database yet. The entities below describe the data
+> either way; switching to drift/SQLite stays an option if the data grows.
 
 - `words` — imported from `vocabulary.json` + paths to parent recordings (cz/en) if made
 - `word_progress` — per word: state (`new` / `learning` / `known`), rolling average score, `due_lesson`
