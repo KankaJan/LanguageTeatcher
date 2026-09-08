@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../logic/languages.dart';
 import '../logic/pack_generator.dart';
@@ -53,6 +54,18 @@ class _PackCreationDialogState extends State<PackCreationDialog> {
       );
       await widget.packStore.addPack(pack);
       if (mounted) Navigator.of(context).pop();
+    } on MissingPluginException {
+      // The ML Kit translation module failed to register when the app
+      // started; a full restart re-attempts the registration (the app now
+      // also self-heals this on startup).
+      if (mounted) {
+        setState(() {
+          _generating = false;
+          _error = 'Překladový modul se nenačetl. Úplně zavřete aplikaci '
+              '(i z přehledu spuštěných aplikací) a otevřete ji znovu, pak '
+              'to zkuste ještě jednou.';
+        });
+      }
     } on Exception catch (e) {
       if (mounted) {
         setState(() {
