@@ -64,6 +64,7 @@ class _LessonScreenState extends State<LessonScreen> {
   _Hint _hint = _Hint.none;
   bool? _micAllowed;
   bool _recording = false;
+  bool _starBurst = false;
 
   /// Incremented on every skip/advance so stale awaits stop acting.
   int _runId = 0;
@@ -140,7 +141,20 @@ class _LessonScreenState extends State<LessonScreen> {
       await _audio.speak(word, WordLang.en);
       if (await interrupted(const Duration(milliseconds: 600))) return;
     }
+    if (_isLastPassOfWord(_passIndex)) {
+      // The word is done for today: a quick star burst as a reward.
+      setState(() => _starBurst = true);
+      if (await interrupted(const Duration(milliseconds: 900))) return;
+    }
     _advance();
+  }
+
+  bool _isLastPassOfWord(int index) {
+    final id = _lesson.passes[index].word.id;
+    for (var i = index + 1; i < _lesson.passes.length; i++) {
+      if (_lesson.passes[i].word.id == id) return false;
+    }
+    return true;
   }
 
   Future<void> _captureAttempt(Word word, int run) async {
@@ -229,6 +243,7 @@ class _LessonScreenState extends State<LessonScreen> {
     setState(() {
       _passIndex++;
       _hint = _Hint.none;
+      _starBurst = false;
     });
     _runPass();
   }
@@ -293,13 +308,32 @@ class _LessonScreenState extends State<LessonScreen> {
               ),
               Expanded(
                 child: Center(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 350),
-                    child: EmojiCard(
-                      key: ValueKey(_passIndex),
-                      emoji: emoji,
-                      background: _cardColors[_passIndex % _cardColors.length],
-                    ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 350),
+                        child: EmojiCard(
+                          key: ValueKey(_passIndex),
+                          emoji: emoji,
+                          background:
+                              _cardColors[_passIndex % _cardColors.length],
+                        ),
+                      ),
+                      IgnorePointer(
+                        child: AnimatedOpacity(
+                          opacity: _starBurst ? 1 : 0,
+                          duration: const Duration(milliseconds: 150),
+                          child: AnimatedScale(
+                            scale: _starBurst ? 1.25 : 0.4,
+                            duration: const Duration(milliseconds: 500),
+                            curve: Curves.elasticOut,
+                            child: const Text('🌟',
+                                style: TextStyle(fontSize: 96)),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),

@@ -2,7 +2,7 @@ name: language_teatcher
 description: "Voice-only English vocabulary trainer for a Czech-speaking toddler."
 publish_to: 'none'
 
-version: 0.1.0+1
+version: 1.0.0+2
 
 environment:
   sdk: ^3.13.2
@@ -28,3 +28,4 @@ flutter:
 
   assets:
     - content/vocabulary.json
+    - assets/openmoji/

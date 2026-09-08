@@ -296,6 +296,14 @@ class _ParentScreenState extends State<ParentScreen> {
             ),
           ),
           const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              'Obrázky slovíček: OpenMoji (openmoji.org), licence CC BY-SA 4.0.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+          const SizedBox(height: 16),
           OutlinedButton.icon(
             icon: const Icon(Icons.restart_alt),
             label: const Text('Začít od začátku (smazat pokrok)'),

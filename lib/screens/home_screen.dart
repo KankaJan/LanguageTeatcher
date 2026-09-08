@@ -6,6 +6,7 @@ import '../services/model_manager.dart';
 import '../services/progress_store.dart';
 import '../services/recording_store.dart';
 import '../services/speech_scorer.dart';
+import '../widgets/parent_gate.dart';
 import 'lesson_screen.dart';
 import 'parent_screen.dart';
 
@@ -63,10 +64,12 @@ class HomeScreen extends StatelessWidget {
             Positioned(
               top: 8,
               right: 8,
-              // Long-press-only parent gate so the child can't open it by
-              // tapping. A sturdier gate arrives with milestone M6.
+              // Parent mode sits behind a two-finger-hold gate a toddler
+              // can't pass by tapping around.
               child: GestureDetector(
-                onLongPress: () {
+                onTap: () async {
+                  final unlocked = await ParentGateDialog.show(context);
+                  if (!unlocked || !context.mounted) return;
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => ParentScreen(

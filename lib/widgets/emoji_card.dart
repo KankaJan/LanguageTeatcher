@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
-/// The child-facing "picture": a huge emoji on a soft colored card. The child
-/// mode never shows text, so this card carries all the meaning.
+import '../logic/open_moji.dart';
+
+/// The child-facing "picture": bundled OpenMoji artwork (with the raw emoji
+/// glyph as fallback) on a soft colored card. The child mode never shows
+/// text, so this card carries all the meaning.
 class EmojiCard extends StatelessWidget {
   const EmojiCard({super.key, required this.emoji, this.background});
 
@@ -10,6 +13,7 @@ class EmojiCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final asset = openMojiAssetFor(emoji);
     return AspectRatio(
       aspectRatio: 1,
       child: Container(
@@ -26,12 +30,14 @@ class EmojiCard extends StatelessWidget {
           ],
         ),
         child: Center(
-          child: FittedBox(
-            fit: BoxFit.contain,
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: Text(emoji, style: const TextStyle(fontSize: 160)),
-            ),
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: asset != null
+                ? Image.asset(asset, fit: BoxFit.contain)
+                : FittedBox(
+                    fit: BoxFit.contain,
+                    child: Text(emoji, style: const TextStyle(fontSize: 160)),
+                  ),
           ),
         ),
       ),
