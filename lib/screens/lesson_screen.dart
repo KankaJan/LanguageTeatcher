@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:record/record.dart';
 
+import '../logic/languages.dart';
 import '../logic/lesson_builder.dart';
+import '../models/language_pack.dart';
 import '../models/progress.dart';
 import '../models/vocabulary.dart';
 import '../services/app_prefs.dart';
@@ -25,18 +27,20 @@ enum _Hint { none, repeatAfterMe, listening }
 class LessonScreen extends StatefulWidget {
   const LessonScreen({
     super.key,
-    required this.vocabulary,
+    required this.pack,
     required this.prefs,
     required this.recordings,
     required this.progress,
     required this.scorer,
   });
 
-  final Vocabulary vocabulary;
+  final LanguagePack pack;
   final AppPrefs prefs;
   final RecordingStore recordings;
   final ProgressStore progress;
   final SpeechScorer scorer;
+
+  Vocabulary get vocabulary => pack.vocabulary;
 
   @override
   State<LessonScreen> createState() => _LessonScreenState();
@@ -55,8 +59,11 @@ class _LessonScreenState extends State<LessonScreen> {
 
   late final int _lessonNumber = widget.progress.nextLessonNumber;
   late final Lesson _lesson;
-  late final WordAudioPlayer _audio =
-      WordAudioPlayer(store: widget.recordings);
+  late final WordAudioPlayer _audio = WordAudioPlayer(
+    store: widget.recordings,
+    sourceLocale: languageByCode(widget.pack.sourceCode).ttsLocale,
+    targetLocale: languageByCode(widget.pack.targetCode).ttsLocale,
+  );
   final AudioRecorder _recorder = AudioRecorder();
 
   int _passIndex = 0;
@@ -241,8 +248,14 @@ class _LessonScreenState extends State<LessonScreen> {
       reviewInterval: widget.prefs.reviewIntervalLessons,
     );
     if (!mounted) return;
+    final source = languageByCode(widget.pack.sourceCode);
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const CelebrationScreen()),
+      MaterialPageRoute(
+        builder: (_) => CelebrationScreen(
+          praise: source.praise,
+          praiseLocale: source.ttsLocale,
+        ),
+      ),
     );
   }
 

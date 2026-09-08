@@ -8,6 +8,7 @@ class AppPrefs {
   static const _keyWordsPerLesson = 'words_per_lesson';
   static const _keyRepetitionsPerWord = 'repetitions_per_word';
   static const _keyReviewInterval = 'review_interval_lessons';
+  static const _keyActivePack = 'active_pack_id';
 
   static const defaultWordsPerLesson = 5;
   static const defaultRepetitionsPerWord = 3;
@@ -36,4 +37,10 @@ class AppPrefs {
 
   Future<void> setReviewIntervalLessons(int value) =>
       _prefs.setInt(_keyReviewInterval, value);
+
+  /// Which language pack the child is learning right now.
+  String get activePackId => _prefs.getString(_keyActivePack) ?? 'cs_en';
+
+  Future<void> setActivePackId(String value) =>
+      _prefs.setString(_keyActivePack, value);
 }

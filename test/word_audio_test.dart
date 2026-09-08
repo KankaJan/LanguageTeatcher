@@ -63,11 +63,18 @@ void main() {
     await store.saveFrom(capture.path, wordId, lang);
   }
 
+  WordAudioPlayer makeAudio(FakeFilePlayer filePlayer) => WordAudioPlayer(
+        store: store,
+        sourceLocale: 'cs-CZ',
+        targetLocale: 'en-US',
+        tts: tts,
+        filePlayer: filePlayer,
+      );
+
   test('unrecorded word falls back to TTS with the right text and locale',
       () async {
     final filePlayer = FakeFilePlayer();
-    final audio =
-        WordAudioPlayer(store: store, tts: tts, filePlayer: filePlayer);
+    final audio = makeAudio(filePlayer);
 
     await audio.speak(word, WordLang.cz);
     await audio.speak(word, WordLang.en);
@@ -79,8 +86,7 @@ void main() {
   test('recorded word plays the parent recording, not TTS', () async {
     await addRecording('dog', WordLang.cz);
     final filePlayer = FakeFilePlayer();
-    final audio =
-        WordAudioPlayer(store: store, tts: tts, filePlayer: filePlayer);
+    final audio = makeAudio(filePlayer);
 
     await audio.speak(word, WordLang.cz);
     await audio.speak(word, WordLang.en);
@@ -92,11 +98,7 @@ void main() {
 
   test('a broken recording falls back to TTS instead of silence', () async {
     await addRecording('dog', WordLang.cz);
-    final audio = WordAudioPlayer(
-      store: store,
-      tts: tts,
-      filePlayer: FakeFilePlayer(failing: true),
-    );
+    final audio = makeAudio(FakeFilePlayer(failing: true));
 
     await audio.speak(word, WordLang.cz);
 

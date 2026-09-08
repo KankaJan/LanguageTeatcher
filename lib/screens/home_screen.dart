@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../logic/languages.dart';
 import '../logic/open_moji.dart';
-import '../models/vocabulary.dart';
+import '../models/language_pack.dart';
 import '../services/app_prefs.dart';
 import '../services/model_manager.dart';
+import '../services/pack_store.dart';
 import '../services/progress_store.dart';
 import '../services/recording_store.dart';
 import '../services/speech_scorer.dart';
@@ -11,12 +13,14 @@ import '../widgets/parent_gate.dart';
 import 'lesson_screen.dart';
 import 'parent_screen.dart';
 
-/// Child-facing start screen: one giant play button, no text. The parent
-/// section hides behind a long-press on the small corner icon.
+/// Child-facing start screen: the otter, the active pack's flags, and one
+/// giant play button — no text. The parent section hides behind the
+/// two-finger gate on the corner icon.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
     super.key,
-    required this.vocabulary,
+    required this.pack,
+    required this.packStore,
     required this.prefs,
     required this.recordings,
     required this.progress,
@@ -24,15 +28,18 @@ class HomeScreen extends StatelessWidget {
     required this.scorer,
   });
 
-  final Vocabulary vocabulary;
+  final LanguagePack pack;
+  final PackStore packStore;
   final AppPrefs prefs;
   final RecordingStore recordings;
   final ProgressStore progress;
-  final ModelManager models;
+  final ModelManager? models;
   final SpeechScorer scorer;
 
   @override
   Widget build(BuildContext context) {
+    final source = languageByCode(pack.sourceCode);
+    final target = languageByCode(pack.targetCode);
     return Scaffold(
       backgroundColor: const Color(0xFFFDF8F0),
       body: SafeArea(
@@ -43,13 +50,26 @@ class HomeScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const _OtterMascot(),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(source.flag, style: const TextStyle(fontSize: 30)),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        child: Icon(Icons.arrow_forward_rounded,
+                            size: 24, color: Colors.brown),
+                      ),
+                      Text(target.flag, style: const TextStyle(fontSize: 30)),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
                   _PlayButton(
                     onPressed: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => LessonScreen(
-                            vocabulary: vocabulary,
+                            pack: pack,
                             prefs: prefs,
                             recordings: recordings,
                             progress: progress,
@@ -74,7 +94,8 @@ class HomeScreen extends StatelessWidget {
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => ParentScreen(
-                        vocabulary: vocabulary,
+                        pack: pack,
+                        packStore: packStore,
                         prefs: prefs,
                         recordings: recordings,
                         progress: progress,

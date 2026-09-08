@@ -3,18 +3,18 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
-/// Which side of a word pair a recording (or TTS utterance) is for.
+/// Which side of a word pair a recording (or TTS utterance) is for. The
+/// codes are historical file-name suffixes: `cz` = the pack's SOURCE
+/// language, `en` = its TARGET language (literally Czech/English in the
+/// bundled pack). Actual TTS locales come from the active language pack.
 enum WordLang {
-  cz('cz', 'cs-CZ'),
-  en('en', 'en-US');
+  cz('cz'),
+  en('en');
 
-  const WordLang(this.code, this.ttsLocale);
+  const WordLang(this.code);
 
   /// File-name suffix.
   final String code;
-
-  /// BCP-47 locale used when falling back to device TTS.
-  final String ttsLocale;
 }
 
 /// Parent voice recordings, one file per word+language, stored in the app's

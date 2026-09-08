@@ -26,6 +26,15 @@ class WordCategory {
         emoji: json['emoji'] as String,
         suggestedLessons: json['suggested_lessons'] as String,
       );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'order': order,
+        'en': en,
+        'cz': cz,
+        'emoji': emoji,
+        'suggested_lessons': suggestedLessons,
+      };
 }
 
 /// One teachable word pair. [emoji] is the placeholder picture; when null the
@@ -54,6 +63,24 @@ class Word {
         categoryId: json['category'] as String,
         order: json['order'] as int,
         emoji: json['emoji'] as String?,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'en': en,
+        'cz': cz,
+        'category': categoryId,
+        'order': order,
+        'emoji': emoji,
+      };
+
+  Word copyWith({String? en, String? cz}) => Word(
+        id: id,
+        en: en ?? this.en,
+        cz: cz ?? this.cz,
+        categoryId: categoryId,
+        order: order,
+        emoji: emoji,
       );
 }
 
@@ -103,4 +130,9 @@ class Vocabulary {
     }
     return Vocabulary(categories: categories, words: words);
   }
+
+  Map<String, dynamic> toJson() => {
+        'categories': categories.map((c) => c.toJson()).toList(),
+        'words': orderedWords.map((w) => w.toJson()).toList(),
+      };
 }

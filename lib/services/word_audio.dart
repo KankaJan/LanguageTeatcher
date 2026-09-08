@@ -35,15 +35,20 @@ class JustAudioFilePlayer implements FilePlayer {
 /// Speaks a word in the requested language: the parent's recording when one
 /// exists, otherwise the device TTS voice. This is the only audio path the
 /// lesson uses, so recorded words automatically sound like the parent.
+/// [sourceLocale]/[targetLocale] come from the active language pack.
 class WordAudioPlayer {
   WordAudioPlayer({
     required this.store,
+    required this.sourceLocale,
+    required this.targetLocale,
     SpeechSynthesizer? tts,
     FilePlayer? filePlayer,
   })  : tts = tts ?? TtsService(),
         filePlayer = filePlayer ?? JustAudioFilePlayer();
 
   final RecordingStore store;
+  final String sourceLocale;
+  final String targetLocale;
   final SpeechSynthesizer tts;
   final FilePlayer filePlayer;
 
@@ -57,7 +62,8 @@ class WordAudioPlayer {
       }
     }
     final text = lang == WordLang.cz ? word.cz : word.en;
-    await tts.speak(text, lang.ttsLocale);
+    await tts.speak(
+        text, lang == WordLang.cz ? sourceLocale : targetLocale);
   }
 
   Future<void> stop() async {

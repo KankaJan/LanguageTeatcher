@@ -6,9 +6,17 @@ import 'package:flutter/material.dart';
 import '../services/tts_service.dart';
 
 /// End-of-lesson celebration: confetti rains, stars pop in, a cheer is
-/// spoken in both languages, then the app returns home by itself (or on tap).
+/// spoken in the child's own language, then the app returns home by itself
+/// (or on tap).
 class CelebrationScreen extends StatefulWidget {
-  const CelebrationScreen({super.key});
+  const CelebrationScreen({
+    super.key,
+    required this.praise,
+    required this.praiseLocale,
+  });
+
+  final String praise;
+  final String praiseLocale;
 
   @override
   State<CelebrationScreen> createState() => _CelebrationScreenState();
@@ -38,7 +46,7 @@ class _CelebrationScreenState extends State<CelebrationScreen>
     await Future<void>.delayed(const Duration(milliseconds: 400));
     if (!mounted) return;
     // Praise is spoken in the child's own language only (parent feedback).
-    await _tts.speakCzech('Hurá! Výborně!');
+    await _tts.speak(widget.praise, widget.praiseLocale);
   }
 
   void _close() {

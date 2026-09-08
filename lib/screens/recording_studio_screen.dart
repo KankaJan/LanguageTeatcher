@@ -4,30 +4,41 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
+import '../models/language_pack.dart';
 import '../models/vocabulary.dart';
+import '../services/pack_store.dart';
 import '../services/recording_store.dart';
 import '../services/word_audio.dart';
 
-/// Parent-mode studio: record your own voice for the Czech and/or English
-/// side of every word. Words with a recording play in the parent's voice
-/// during lessons; the rest fall back to device TTS.
+/// Parent-mode studio: record your own voice for either side of every word.
+/// Words with a recording play in the parent's voice during lessons; the
+/// rest fall back to device TTS. For machine-translated packs each word can
+/// also be edited here (the fix persists into the pack).
 class RecordingStudioScreen extends StatelessWidget {
   const RecordingStudioScreen({
     super.key,
-    required this.vocabulary,
+    required this.pack,
+    required this.packStore,
     required this.store,
   });
 
-  final Vocabulary vocabulary;
+  final LanguagePack pack;
+  final PackStore packStore;
   final RecordingStore store;
+
+  Vocabulary get vocabulary => pack.vocabulary;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Nahrávací studio')),
       body: ListenableBuilder(
-        listenable: store,
+        listenable: Listenable.merge([store, packStore]),
         builder: (context, _) {
+          // Re-read the pack so word edits show immediately.
+          final currentPack = packStore.packs
+              .firstWhere((p) => p.id == pack.id, orElse: () => pack);
+          final vocabulary = currentPack.vocabulary;
           final words = vocabulary.orderedWords;
           return ListView(
             children: [
@@ -53,6 +64,9 @@ class RecordingStudioScreen extends StatelessWidget {
                         word: word,
                         vocabulary: vocabulary,
                         store: store,
+                        onEdit: currentPack.generated
+                            ? () => _editWord(context, currentPack, word)
+                            : null,
                       ),
                   ],
                 ),
@@ -61,6 +75,53 @@ class RecordingStudioScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Future<void> _editWord(
+      BuildContext context, LanguagePack currentPack, Word word) async {
+    final sourceController = TextEditingController(text: word.cz);
+    final targetController = TextEditingController(text: word.en);
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Upravit slovíčko'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: sourceController,
+              decoration:
+                  const InputDecoration(labelText: 'Zdrojový jazyk'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: targetController,
+              decoration: const InputDecoration(labelText: 'Cílový jazyk'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Zrušit'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Uložit'),
+          ),
+        ],
+      ),
+    );
+    if (saved == true) {
+      await packStore.updateWord(
+        currentPack.id,
+        word.id,
+        source: sourceController.text.trim(),
+        target: targetController.text.trim(),
+      );
+    }
+    sourceController.dispose();
+    targetController.dispose();
   }
 
   String _categoryProgress(WordCategory category) {
@@ -81,11 +142,13 @@ class _WordTile extends StatelessWidget {
     required this.word,
     required this.vocabulary,
     required this.store,
+    this.onEdit,
   });
 
   final Word word;
   final Vocabulary vocabulary;
   final RecordingStore store;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -93,9 +156,16 @@ class _WordTile extends StatelessWidget {
       leading: Text(vocabulary.emojiFor(word),
           style: const TextStyle(fontSize: 24)),
       title: Text('${word.cz} — ${word.en}'),
+      onTap: onEdit,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (onEdit != null)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 20),
+              tooltip: 'Opravit překlad',
+              onPressed: onEdit,
+            ),
           _LangChip(word: word, lang: WordLang.cz, store: store),
           const SizedBox(width: 8),
           _LangChip(word: word, lang: WordLang.en, store: store),

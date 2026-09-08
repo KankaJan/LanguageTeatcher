@@ -16,9 +16,6 @@ class TtsService implements SpeechSynthesizer {
     _tts.awaitSpeakCompletion(true);
   }
 
-  static const czech = 'cs-CZ';
-  static const english = 'en-US';
-
   /// Slower than default so a toddler can follow.
   static const _speechRate = 0.42;
 
@@ -31,9 +28,9 @@ class TtsService implements SpeechSynthesizer {
     await _tts.speak(text);
   }
 
-  Future<void> speakCzech(String text) => speak(text, czech);
-
-  Future<void> speakEnglish(String text) => speak(text, english);
+  /// Whether the device has a voice for [language] (e.g. 'de-DE').
+  Future<bool> isLanguageAvailable(String language) async =>
+      await _tts.isLanguageAvailable(language) == true;
 
   @override
   Future<void> stop() => _tts.stop();

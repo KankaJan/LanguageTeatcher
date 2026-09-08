@@ -71,7 +71,9 @@ class VoskScorer implements SpeechScorer {
 
   static const _channel = MethodChannel('otterly/vosk');
 
-  final ModelManager models;
+  /// Null when the active pack's target language has no Vosk model — the
+  /// scorer then declines and grading stays with the parent.
+  final ModelManager? models;
   bool _initialized = false;
 
   @override
@@ -80,7 +82,7 @@ class VoskScorer implements SpeechScorer {
     required String expected,
     required List<String> distractors,
   }) async {
-    final modelPath = models.modelPath;
+    final modelPath = models?.modelPath;
     if (modelPath == null) return null;
     try {
       if (!_initialized) {

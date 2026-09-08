@@ -6,17 +6,18 @@ import 'package:path_provider/path_provider.dart';
 
 enum ModelStatus { absent, downloading, ready }
 
-/// Downloads and manages the on-device speech-recognition model
-/// (vosk-model-small-en-us-0.15, ~40 MB). The model is fetched once from the
-/// official Vosk site into app-support storage; lessons themselves never need
-/// the network. While no model is installed, attempts simply stay
-/// parent-graded.
+/// Downloads and manages one on-device speech-recognition model (a Vosk
+/// small model, ~40 MB, for the active pack's target language). The model is
+/// fetched once from the official Vosk site into app-support storage;
+/// lessons themselves never need the network. While no model is installed,
+/// attempts simply stay parent-graded.
 class ModelManager extends ChangeNotifier {
-  ModelManager(this.baseDir);
+  ModelManager(this.baseDir, {required this.modelName});
 
-  static const modelName = 'vosk-model-small-en-us-0.15';
-  static const modelUrl =
-      'https://alphacephei.com/vosk/models/$modelName.zip';
+  /// Model file name from the language catalog (lib/logic/languages.dart).
+  final String modelName;
+
+  String get modelUrl => 'https://alphacephei.com/vosk/models/$modelName.zip';
 
   /// Rough download size shown to the parent before they tap.
   static const approximateSizeMb = 40;
@@ -27,9 +28,12 @@ class ModelManager extends ChangeNotifier {
   double _progress = 0;
   String? _error;
 
-  static Future<ModelManager> open() async {
+  static Future<ModelManager> open({required String modelName}) async {
     final support = await getApplicationSupportDirectory();
-    final manager = ModelManager(Directory('${support.path}/models'));
+    final manager = ModelManager(
+      Directory('${support.path}/models'),
+      modelName: modelName,
+    );
     manager._refreshStatus();
     return manager;
   }

@@ -23,6 +23,7 @@ class VoskScorerChannel : MethodChannel.MethodCallHandler {
     }
 
     private var model: Model? = null
+    private var modelPath: String? = null
     private val executor = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -36,8 +37,11 @@ class VoskScorerChannel : MethodChannel.MethodCallHandler {
                 }
                 executor.execute {
                     try {
-                        if (model == null) {
+                        // Switching language packs loads a different model.
+                        if (model == null || modelPath != path) {
+                            model?.close()
                             model = Model(path)
+                            modelPath = path
                         }
                         mainHandler.post { result.success(true) }
                     } catch (e: Exception) {

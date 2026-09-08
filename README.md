@@ -1,12 +1,18 @@
 # Otterly 🦦
 
-A mobile app (Android first, Flutter) that teaches a 3-year-old Czech-speaking
-child English vocabulary — **voice and pictures only, no written words in child
-mode**. Words are spoken in Czech, then in English, in the parent's recorded
-voice where available and free on-device TTS otherwise. Lessons repeat each word
-several times, score the child's spoken answers, and adapt: low-scoring words
-return in the next lesson, mastered words come back for review a few lessons
-later.
+A mobile app (Android first, Flutter) that teaches a toddler foreign-language
+vocabulary — **voice and pictures only, no written words in child mode**. Each
+word is spoken in the child's language, then in the target language, and the
+child repeats it aloud while the mic records; answers are scored on-device and
+lessons adapt (low-scoring words return next lesson, mastered ones come back
+for review later). The parent's recorded voice is preferred, free on-device
+TTS covers the rest.
+
+The bundled pack is curated Czech→English; parents can generate **new
+language packs for any pair** from ~17 languages — the word list is machine-
+translated on the phone (ML Kit, offline after a one-time model download),
+editable afterwards, with per-pack progress, recordings, and speech
+recognition, and the active pair's flags shown on the start screen.
 
 - **[PLAN.md](PLAN.md)** — the full build plan: product spec, learning
   algorithm, technical architecture, milestones.
