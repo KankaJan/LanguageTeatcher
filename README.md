@@ -13,3 +13,11 @@ later.
 - **[content/vocabulary.json](content/vocabulary.json)** — the research-based
   word list (221 Czech↔English pairs in 13 categories) that drives the lesson
   selector; designed to be expanded.
+
+**Status:** milestones M0–M5 of the plan are implemented — lesson player,
+parent recording studio, adaptive lessons with recorded answers and a review
+inbox, on-device speech scoring (optional ~40 MB model download), and the
+parent progress dashboard. Remaining: M6 polish (rewards, sturdier parent
+gate, real illustrations, app icon, release). Every push builds an
+installable APK — download it from the latest GitHub Actions run
+(Artifacts → `language-teatcher-apk`).

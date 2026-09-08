@@ -6,6 +6,7 @@ import '../services/app_prefs.dart';
 import '../services/model_manager.dart';
 import '../services/progress_store.dart';
 import '../services/recording_store.dart';
+import 'progress_dashboard_screen.dart';
 import 'recording_studio_screen.dart';
 import 'review_inbox_screen.dart';
 
@@ -80,6 +81,21 @@ class _ParentScreenState extends State<ParentScreen> {
                           : 'Aktuální téma: '
                               '${vocabulary.categoryOf(firstNew).emoji} '
                               '${vocabulary.categoryOf(firstNew).cz}'),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.insights),
+                        label: const Text('Zobrazit podrobnosti'),
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => ProgressDashboardScreen(
+                                vocabulary: vocabulary,
+                                progress: widget.progress,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ],
                   );
                 },
