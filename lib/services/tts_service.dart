@@ -1,11 +1,17 @@
 import 'package:flutter_tts/flutter_tts.dart';
 
+/// Minimal speech interface so playback logic can be tested with fakes.
+abstract class SpeechSynthesizer {
+  Future<void> speak(String text, String language);
+  Future<void> stop();
+  void dispose();
+}
+
 /// Speaks words via the device's text-to-speech voices.
 ///
-/// This is the "free generic TTS" layer from the plan. From milestone M2 on,
-/// playback will first look for a parent recording of the word and only fall
-/// back to TTS when none exists.
-class TtsService {
+/// This is the "free generic TTS" layer from the plan: playback prefers a
+/// parent recording (see WordAudioPlayer) and only falls back here.
+class TtsService implements SpeechSynthesizer {
   TtsService() {
     _tts.awaitSpeakCompletion(true);
   }
@@ -18,6 +24,7 @@ class TtsService {
 
   final FlutterTts _tts = FlutterTts();
 
+  @override
   Future<void> speak(String text, String language) async {
     await _tts.setLanguage(language);
     await _tts.setSpeechRate(_speechRate);
@@ -28,8 +35,10 @@ class TtsService {
 
   Future<void> speakEnglish(String text) => speak(text, english);
 
+  @override
   Future<void> stop() => _tts.stop();
 
+  @override
   void dispose() {
     _tts.stop();
   }

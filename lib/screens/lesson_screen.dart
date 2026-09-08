@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import '../logic/lesson_builder.dart';
 import '../models/vocabulary.dart';
 import '../services/app_prefs.dart';
-import '../services/tts_service.dart';
+import '../services/recording_store.dart';
+import '../services/word_audio.dart';
 import '../widgets/emoji_card.dart';
 import 'celebration_screen.dart';
 
@@ -16,10 +17,12 @@ class LessonScreen extends StatefulWidget {
     super.key,
     required this.vocabulary,
     required this.prefs,
+    required this.recordings,
   });
 
   final Vocabulary vocabulary;
   final AppPrefs prefs;
+  final RecordingStore recordings;
 
   @override
   State<LessonScreen> createState() => _LessonScreenState();
@@ -35,7 +38,8 @@ class _LessonScreenState extends State<LessonScreen> {
   ];
 
   late final Lesson _lesson;
-  final TtsService _tts = TtsService();
+  late final WordAudioPlayer _audio =
+      WordAudioPlayer(store: widget.recordings);
 
   int _passIndex = 0;
   bool _repeatHintVisible = false;
@@ -57,7 +61,7 @@ class _LessonScreenState extends State<LessonScreen> {
 
   @override
   void dispose() {
-    _tts.dispose();
+    _audio.dispose();
     super.dispose();
   }
 
@@ -71,9 +75,9 @@ class _LessonScreenState extends State<LessonScreen> {
     }
 
     if (await interrupted(const Duration(milliseconds: 700))) return;
-    await _tts.speakCzech(word.cz);
+    await _audio.speak(word, WordLang.cz);
     if (await interrupted(const Duration(milliseconds: 900))) return;
-    await _tts.speakEnglish(word.en);
+    await _audio.speak(word, WordLang.en);
     if (!mounted || _runId != run) return;
 
     setState(() => _repeatHintVisible = true);
@@ -84,7 +88,7 @@ class _LessonScreenState extends State<LessonScreen> {
   void _advance() {
     if (!mounted) return;
     _runId++;
-    _tts.stop();
+    _audio.stop();
     if (_passIndex + 1 >= _lesson.passes.length) {
       _finishLesson();
       return;

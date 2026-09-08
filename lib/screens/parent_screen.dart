@@ -2,18 +2,23 @@ import 'package:flutter/material.dart';
 
 import '../models/vocabulary.dart';
 import '../services/app_prefs.dart';
+import '../services/recording_store.dart';
+import 'recording_studio_screen.dart';
 
-/// Parent mode: progress overview and lesson settings. This is the one place
-/// where on-screen text is allowed — it is written in Czech for the parent.
+/// Parent mode: progress overview, recording studio, and lesson settings.
+/// This is the one place where on-screen text is allowed — it is written in
+/// Czech for the parent.
 class ParentScreen extends StatefulWidget {
   const ParentScreen({
     super.key,
     required this.vocabulary,
     required this.prefs,
+    required this.recordings,
   });
 
   final Vocabulary vocabulary;
   final AppPrefs prefs;
+  final RecordingStore recordings;
 
   @override
   State<ParentScreen> createState() => _ParentScreenState();
@@ -102,18 +107,38 @@ class _ParentScreenState extends State<ParentScreen> {
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Hlas', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Slovíčka zatím čte hlas telefonu (čeština a angličtina). '
-                    'Zkontrolujte v nastavení telefonu, že jsou oba hlasy '
-                    'nainstalované — obvykle v sekci „Převod textu na řeč“. '
-                    'Nahrávání slovíček vlastním hlasem přibude v další verzi.',
-                  ),
-                ],
+              child: ListenableBuilder(
+                listenable: widget.recordings,
+                builder: (context, _) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Váš hlas',
+                        style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Nahráno ${widget.recordings.recordedCount} nahrávek. '
+                      'Slovíčka s vaší nahrávkou zní v lekci vaším hlasem; '
+                      'ostatní čte hlas telefonu (zkontrolujte, že máte v '
+                      'telefonu nainstalovaný český i anglický hlas — sekce '
+                      '„Převod textu na řeč“).',
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton.icon(
+                      icon: const Icon(Icons.mic),
+                      label: const Text('Otevřít nahrávací studio'),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => RecordingStudioScreen(
+                              vocabulary: widget.vocabulary,
+                              store: widget.recordings,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

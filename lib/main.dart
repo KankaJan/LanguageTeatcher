@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'models/vocabulary.dart';
 import 'screens/home_screen.dart';
 import 'services/app_prefs.dart';
+import 'services/recording_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,7 +15,12 @@ Future<void> main() async {
       await rootBundle.loadString('content/vocabulary.json');
   final vocabulary = Vocabulary.fromJsonString(vocabularyJson);
   final prefs = await AppPrefs.load();
-  runApp(LanguageTeatcherApp(vocabulary: vocabulary, prefs: prefs));
+  final recordings = await RecordingStore.open();
+  runApp(LanguageTeatcherApp(
+    vocabulary: vocabulary,
+    prefs: prefs,
+    recordings: recordings,
+  ));
 }
 
 class LanguageTeatcherApp extends StatelessWidget {
@@ -22,10 +28,12 @@ class LanguageTeatcherApp extends StatelessWidget {
     super.key,
     required this.vocabulary,
     required this.prefs,
+    required this.recordings,
   });
 
   final Vocabulary vocabulary;
   final AppPrefs prefs;
+  final RecordingStore recordings;
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +44,11 @@ class LanguageTeatcherApp extends StatelessWidget {
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF66BB6A)),
       ),
-      home: HomeScreen(vocabulary: vocabulary, prefs: prefs),
+      home: HomeScreen(
+        vocabulary: vocabulary,
+        prefs: prefs,
+        recordings: recordings,
+      ),
     );
   }
 }
