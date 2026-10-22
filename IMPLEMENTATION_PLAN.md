@@ -375,7 +375,36 @@ Report format (keep it short, paste raw output where it matters):
 
 ---
 
-## 4. Order of work, one line
+## 4. Status (2026-10-22, done without phone, Flutter or Android SDK)
+
+Done and committed on the branch:
+
+| Task | Change | Verified how |
+|---|---|---|
+| 1 | `VoskScorerChannel.describe()` forwards the cause chain; `Log.e` in both catch blocks | by reading; **not compiled** |
+| 3 | `android:pageSizeCompat="enabled"` on `<application>` | by reading |
+| 4 (rules) | `android/app/proguard-rules.pro` + `proguardFiles(...)` in release | by reading |
+| 5 (bumps) | vosk-android 0.3.75, JNA 5.19.1 | API checked against vosk-api master (unchanged); vosk-api master builds with NDK r28; **alignment not measured** |
+| 6 (logging) | `MainActivity` logs the swallowed ML Kit errors; pack dialog appends `(technicky: <MissingPluginException.message>)` | by reading |
+| 8 | `android/app/debug.keystore` committed (standard debug credentials), `.gitignore` exception, `signingConfigs.debug` points at it | `keytool -list` |
+
+Not done — needs the local checkout and the phone, in this order:
+
+1. `flutter pub get && flutter analyze && flutter test` — the Kotlin and the
+   one Dart edit have not been compiled. Fix anything trivial, report
+   anything else.
+2. **Task 2 gate**: `flutter build apk --release`, then `llvm-objdump -p`
+   on `lib/arm64-v8a/libvosk.so` and `libjnidispatch.so`. Expect `2**14`
+   for both after the bumps. If `libvosk.so` is `2**12`, the 0.3.75 bump
+   did not help and Task 5's escalation applies.
+3. Phone: `adb shell getconf PAGE_SIZE`; one uninstall of the old APK (new
+   signing key); `flutter run --debug`, download model, one lesson, read
+   the parent speech card — the `lastIssue` text is now the real reason.
+4. **Task 4 gate** (debug vs release) and **Task 6** evidence (logcat
+   `Otterly` / `GeneratedPluginRegistrant` tags), as written above.
+5. Task 7 stays untouched pending Jan's decision. Task 9 checklist.
+
+## 5. Order of work, one line
 
 Task 0 → Task 1 → Task 2 (gate) → Task 3 → Task 4 (gate) → Task 5 → Task 6
 → Task 7 (decision) → Task 8 → Task 9.

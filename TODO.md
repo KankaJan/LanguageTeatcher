@@ -1,5 +1,12 @@
 # TODO — Otterly: fix native-library failures (handoff for local session)
 
+> **2026-10-22:** Tasks 2, 3, the dependency bumps of Task 4, the keystore of
+> Task 6 and extra error reporting are already committed on this branch —
+> see `IMPLEMENTATION_PLAN.md` §4 for what is done, what is unverified
+> (nothing was compiled) and the exact remaining phone steps. Several
+> assumptions below were found wrong on checking; `IMPLEMENTATION_PLAN.md`
+> §2 lists them. Start there, not here.
+
 Work through this top to bottom in a local checkout of branch
 `claude/english-learning-toddler-app-6t0ja1` with the phone connected over
 USB (USB debugging on). Everything here assumes `flutter pub get` ran and
