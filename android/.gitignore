@@ -12,3 +12,6 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+# The debug key is deliberately tracked: CI and local builds share it, so
+# APKs install over each other. It signs nothing that goes to Google Play.
+!app/debug.keystore

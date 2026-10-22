@@ -29,6 +29,19 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        // Committed debug key (android/app/debug.keystore) instead of the
+        // per-machine ~/.android/debug.keystore: every CI run and every
+        // laptop sign with the same key, so a new APK installs over the old
+        // one without an uninstall. Standard Android debug credentials.
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
