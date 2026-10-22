@@ -2,6 +2,7 @@ package cz.kankajan.otterly
 
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import org.json.JSONObject
@@ -18,8 +19,31 @@ import java.util.concurrent.Executors
 class VoskScorerChannel : MethodChannel.MethodCallHandler {
     companion object {
         const val NAME = "otterly/vosk"
+        private const val TAG = "VoskScorer"
         private const val SAMPLE_RATE = 16000.0f
         private const val CHUNK_BYTES = 8000
+
+        /**
+         * Class name and message of a throwable and its whole cause chain.
+         * The Vosk/JNA bridge hides the real reason (the dlopen text of an
+         * UnsatisfiedLinkError) one or two causes deep, and the
+         * ExceptionInInitializerError it is wrapped in has a null message;
+         * once that static initializer has failed, every later access only
+         * yields a NoClassDefFoundError whose message is the bare class name
+         * ("org.vosk.LibVosk"). Forwarding only `message` therefore loses the
+         * diagnosis — this keeps it.
+         */
+        fun describe(t: Throwable): String {
+            val parts = mutableListOf<String>()
+            var cur: Throwable? = t
+            var depth = 0
+            while (cur != null && depth < 6) {
+                parts += "${cur.javaClass.name}: ${cur.message ?: "(no message)"}"
+                cur = cur.cause
+                depth++
+            }
+            return parts.joinToString(" <- ")
+        }
     }
 
     private var model: Model? = null
@@ -57,7 +81,8 @@ class VoskScorerChannel : MethodChannel.MethodCallHandler {
                         }
                         mainHandler.post { result.success(true) }
                     } catch (e: Throwable) {
-                        mainHandler.post { result.error("init_failed", e.message, null) }
+                        Log.e(TAG, "initModel failed for $path", e)
+                        mainHandler.post { result.error("init_failed", describe(e), null) }
                     }
                 }
             }
@@ -78,7 +103,8 @@ class VoskScorerChannel : MethodChannel.MethodCallHandler {
                         val out = score(loaded, path, grammar)
                         mainHandler.post { result.success(out) }
                     } catch (e: Throwable) {
-                        mainHandler.post { result.error("score_failed", e.message, null) }
+                        Log.e(TAG, "scoreFile failed for $path", e)
+                        mainHandler.post { result.error("score_failed", describe(e), null) }
                     }
                 }
             }
