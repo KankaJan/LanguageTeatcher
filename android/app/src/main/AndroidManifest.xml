@@ -1,10 +1,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Parent recording studio captures the parent's voice. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <!-- pageSizeCompat: on 16 KB page-size devices (Android 16+) the package
+         manager already runs 4 KB-aligned native libraries (Vosk/JNA) in
+         backcompat mode and shows a one-time warning; this attribute pins
+         that mode on and suppresses the warning. It is not a fix — the
+         libraries should still be 16 KB-aligned (see IMPLEMENTATION_PLAN.md). -->
     <application
         android:label="Otterly"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:pageSizeCompat="enabled">
         <activity
             android:name=".MainActivity"
             android:exported="true"
