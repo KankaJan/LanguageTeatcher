@@ -1,6 +1,7 @@
 package cz.kankajan.otterly
 
 import android.content.Context
+import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -22,11 +23,15 @@ class MainActivity : FlutterActivity() {
         // ML Kit is initialized.
         try {
             if (!flutterEngine.plugins.has(GoogleMlKitTranslationPlugin::class.java)) {
+                Log.w(TAG, "ML Kit translation plugin was not registered automatically; retrying")
                 flutterEngine.plugins.add(GoogleMlKitTranslationPlugin())
             }
-        } catch (_: Throwable) {
+        } catch (t: Throwable) {
             // Translation stays unavailable; the app copes (pack creation
-            // shows an error, everything else works).
+            // shows an error, everything else works). Log the reason — this
+            // is the only place the registration failure is visible.
+            Log.e(TAG, "ML Kit translation plugin registration failed: "
+                + VoskScorerChannel.describe(t), t)
         }
 
         MethodChannel(
@@ -44,8 +49,15 @@ class MainActivity : FlutterActivity() {
                 clazz.getMethod("initialize", Context::class.java)
             }
             method.invoke(null, context)
-        } catch (_: Throwable) {
+        } catch (t: Throwable) {
             // Already initialized, or this ML Kit version handles it itself.
+            // Logged at warn level because a ClassNotFoundException here means
+            // the reflection target moved and the self-heal is a no-op.
+            Log.w(TAG, "ML Kit explicit init skipped: " + VoskScorerChannel.describe(t))
         }
+    }
+
+    companion object {
+        private const val TAG = "Otterly"
     }
 }

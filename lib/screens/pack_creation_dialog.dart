@@ -54,16 +54,18 @@ class _PackCreationDialogState extends State<PackCreationDialog> {
       );
       await widget.packStore.addPack(pack);
       if (mounted) Navigator.of(context).pop();
-    } on MissingPluginException {
+    } on MissingPluginException catch (e) {
       // The ML Kit translation module failed to register when the app
       // started; a full restart re-attempts the registration (the app now
-      // also self-heals this on startup).
+      // also self-heals this on startup). The message names the method and
+      // channel that was missing — keep it visible, it is the only clue
+      // about which call failed without a logcat session.
       if (mounted) {
         setState(() {
           _generating = false;
           _error = 'Překladový modul se nenačetl. Úplně zavřete aplikaci '
               '(i z přehledu spuštěných aplikací) a otevřete ji znovu, pak '
-              'to zkuste ještě jednou.';
+              'to zkuste ještě jednou.\n\n(technicky: ${e.message})';
         });
       }
     } on Exception catch (e) {
