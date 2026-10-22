@@ -56,6 +56,11 @@ flutter {
 
 dependencies {
     // On-device speech recognition for scoring the child's answers.
-    implementation("com.alphacephei:vosk-android:0.3.47")
-    implementation("net.java.dev.jna:jna:5.13.0@aar")
+    // vosk-android 0.3.47 (2022) and JNA 5.13 predate Android's 16 KB
+    // page-size requirement. JNA fixed its Android alignment in 5.16/5.17
+    // (5.19.1 also restored older Android support); whether 0.3.75's
+    // libvosk.so is 16 KB-aligned must be checked on the built APK with
+    // `llvm-objdump -p libvosk.so | grep LOAD` (want align 2**14).
+    implementation("com.alphacephei:vosk-android:0.3.75")
+    implementation("net.java.dev.jna:jna:5.19.1@aar")
 }
