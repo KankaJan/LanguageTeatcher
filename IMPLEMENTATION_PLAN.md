@@ -404,6 +404,29 @@ Not done — needs the local checkout and the phone, in this order:
    `Otterly` / `GeneratedPluginRegistrant` tags), as written above.
 5. Task 7 stays untouched pending Jan's decision. Task 9 checklist.
 
+### Phone results (2026-10-27, Galaxy S23 SM-S911B, Android 16)
+
+- `getconf PAGE_SIZE` = **4096**. The 16 KB theory in TODO.md was wrong for
+  this phone. All `.so` in the release APK are nevertheless 16 KB-aligned
+  now (`libvosk.so`, `libjnidispatch.so`, `libtranslate_jni.so`: `2**14`),
+  so the bumps are kept as forward compatibility.
+- Vosk: works on the release build after the keep rules — speech card shows
+  no „Poslední hodnocení selhalo", unsure attempts land in the review inbox.
+  Cause of symptom 3 was R8.
+- ML Kit: cause of symptom 1 was R8 too — full-mode R8 stripped `<init>()`
+  of the ML Kit `ComponentRegistrar` classes (logcat: `ComponentDiscovery:
+  Could not instantiate ...NaturalLanguageTranslateRegistrar`,
+  `NoSuchMethodException <init> []`, then `GeneratedPluginRegistrant: Error
+  registering plugin google_mlkit_translation`, NPE). Fixed with the
+  registrar keep rule in `proguard-rules.pro`; re-test pack creation.
+- The `MainActivity` self-heal never fired because Flutter registers a
+  plugin before calling `onAttachedToEngine`, so `plugins.has()` is true
+  even after a failed attach. Left in place; harmless, now moot.
+- Stars: still awarded for a wrongly said word even though scoring works.
+  Open (Task 7): distinguish "recognizer judged it correct" (grammar
+  snapping) from "unsure → inbox → participation star" via Progress
+  correct/wrong counts and the inbox transcript.
+
 ## 5. Order of work, one line
 
 Task 0 → Task 1 → Task 2 (gate) → Task 3 → Task 4 (gate) → Task 5 → Task 6
