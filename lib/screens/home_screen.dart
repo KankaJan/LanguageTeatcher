@@ -59,15 +59,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   const _OtterMascot(),
                   const SizedBox(height: 12),
-                  _FlagPair(
-                    source: source,
-                    target: target,
-                    // Only when the parent allowed it and there is something
-                    // to switch to; otherwise the flags are a plain label.
-                    onTap: prefs.childCanSwitchPacks &&
-                            packStore.packs.length > 1
-                        ? () => _PackPickerSheet.show(context, packStore)
-                        : null,
+                  // Listens to the preference: the parent may flip the
+                  // toggle while this screen already exists behind parent
+                  // mode (e.g. right after creating a second pack).
+                  ListenableBuilder(
+                    listenable: prefs,
+                    builder: (context, _) => _FlagPair(
+                      source: source,
+                      target: target,
+                      // Only when the parent allowed it and there is
+                      // something to switch to; otherwise a plain label.
+                      onTap: prefs.childCanSwitchPacks &&
+                              packStore.packs.length > 1
+                          ? () => _PackPickerSheet.show(context, packStore)
+                          : null,
+                    ),
                   ),
                   const SizedBox(height: 32),
                   _PlayButton(
@@ -97,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 onTap: () async {
                   final unlocked = await ParentGateDialog.show(context);
                   if (!unlocked || !context.mounted) return;
-                  await Navigator.of(context).push(
+                  Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => ParentScreen(
                         pack: pack,
@@ -110,9 +116,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   );
-                  // Parent settings (e.g. whether the child may switch
-                  // packs) are read at build time; pick them up on return.
-                  if (mounted) setState(() {});
                 },
                 child: Padding(
                   padding: const EdgeInsets.all(12),
