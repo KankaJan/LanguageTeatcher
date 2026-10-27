@@ -9,6 +9,7 @@ class AppPrefs {
   static const _keyRepetitionsPerWord = 'repetitions_per_word';
   static const _keyReviewInterval = 'review_interval_lessons';
   static const _keyActivePack = 'active_pack_id';
+  static const _keyChildCanSwitchPacks = 'child_can_switch_packs';
 
   static const defaultWordsPerLesson = 5;
   static const defaultRepetitionsPerWord = 3;
@@ -43,4 +44,13 @@ class AppPrefs {
 
   Future<void> setActivePackId(String value) =>
       _prefs.setString(_keyActivePack, value);
+
+  /// Whether tapping the flags on the start screen lets the child switch
+  /// between language packs without the parent gate. Off by default: a
+  /// toddler tapping around should not end up in a different language.
+  bool get childCanSwitchPacks =>
+      _prefs.getBool(_keyChildCanSwitchPacks) ?? false;
+
+  Future<void> setChildCanSwitchPacks(bool value) =>
+      _prefs.setBool(_keyChildCanSwitchPacks, value);
 }

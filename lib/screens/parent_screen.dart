@@ -47,6 +47,7 @@ class _ParentScreenState extends State<ParentScreen> {
   late int _wordsPerLesson = widget.prefs.wordsPerLesson;
   late int _repetitionsPerWord = widget.prefs.repetitionsPerWord;
   late int _reviewInterval = widget.prefs.reviewIntervalLessons;
+  late bool _childCanSwitchPacks = widget.prefs.childCanSwitchPacks;
   String? _missingVoices;
 
   Vocabulary get vocabulary => widget.pack.vocabulary;
@@ -149,6 +150,23 @@ class _ParentScreenState extends State<ParentScreen> {
                       'obrazovku. Každý balíček má vlastní pokrok i nahrávky.',
                       style: TextStyle(fontSize: 12),
                     ),
+                    if (widget.packStore.packs.length > 1) ...[
+                      const SizedBox(height: 8),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Dítě může přepínat balíček samo'),
+                        subtitle: const Text(
+                          'Klepnutím na vlajky na úvodní obrazovce se '
+                          'otevře výběr balíčku bez rodičovského zámku.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        value: _childCanSwitchPacks,
+                        onChanged: (value) {
+                          setState(() => _childCanSwitchPacks = value);
+                          widget.prefs.setChildCanSwitchPacks(value);
+                        },
+                      ),
+                    ],
                   ],
                 ),
               ),

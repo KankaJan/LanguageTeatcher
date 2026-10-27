@@ -28,14 +28,23 @@ class ModelManager extends ChangeNotifier {
   double _progress = 0;
   String? _error;
 
+  /// One manager per model for the whole app. The pack creation dialog, the
+  /// parent-mode speech card and the scorer behind the active pack all look
+  /// at the same model, and a download started in one place must be visible
+  /// in the others — separate instances would each cache their own status.
+  static final Map<String, ModelManager> _shared = {};
+
   static Future<ModelManager> open({required String modelName}) async {
+    final existing = _shared[modelName];
+    if (existing != null) return existing;
     final support = await getApplicationSupportDirectory();
     final manager = ModelManager(
       Directory('${support.path}/models'),
       modelName: modelName,
     );
     manager._refreshStatus();
-    return manager;
+    // Another caller may have opened the same model while we awaited.
+    return _shared.putIfAbsent(modelName, () => manager);
   }
 
   ModelStatus get status => _status;

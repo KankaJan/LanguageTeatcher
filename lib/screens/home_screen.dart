@@ -16,7 +16,7 @@ import 'parent_screen.dart';
 /// Child-facing start screen: the otter, the active pack's flags, and one
 /// giant play button — no text. The parent section hides behind the
 /// two-finger gate on the corner icon.
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
     required this.pack,
@@ -37,7 +37,15 @@ class HomeScreen extends StatelessWidget {
   final SpeechScorer scorer;
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
   Widget build(BuildContext context) {
+    final pack = widget.pack;
+    final packStore = widget.packStore;
+    final prefs = widget.prefs;
     final source = languageByCode(pack.sourceCode);
     final target = languageByCode(pack.targetCode);
     return Scaffold(
@@ -51,17 +59,15 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   const _OtterMascot(),
                   const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(source.flag, style: const TextStyle(fontSize: 30)),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 8),
-                        child: Icon(Icons.arrow_forward_rounded,
-                            size: 24, color: Colors.brown),
-                      ),
-                      Text(target.flag, style: const TextStyle(fontSize: 30)),
-                    ],
+                  _FlagPair(
+                    source: source,
+                    target: target,
+                    // Only when the parent allowed it and there is something
+                    // to switch to; otherwise the flags are a plain label.
+                    onTap: prefs.childCanSwitchPacks &&
+                            packStore.packs.length > 1
+                        ? () => _PackPickerSheet.show(context, packStore)
+                        : null,
                   ),
                   const SizedBox(height: 32),
                   _PlayButton(
@@ -71,9 +77,9 @@ class HomeScreen extends StatelessWidget {
                           builder: (_) => LessonScreen(
                             pack: pack,
                             prefs: prefs,
-                            recordings: recordings,
-                            progress: progress,
-                            scorer: scorer,
+                            recordings: widget.recordings,
+                            progress: widget.progress,
+                            scorer: widget.scorer,
                           ),
                         ),
                       );
@@ -91,19 +97,22 @@ class HomeScreen extends StatelessWidget {
                 onTap: () async {
                   final unlocked = await ParentGateDialog.show(context);
                   if (!unlocked || !context.mounted) return;
-                  Navigator.of(context).push(
+                  await Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => ParentScreen(
                         pack: pack,
                         packStore: packStore,
                         prefs: prefs,
-                        recordings: recordings,
-                        progress: progress,
-                        models: models,
-                        scorer: scorer,
+                        recordings: widget.recordings,
+                        progress: widget.progress,
+                        models: widget.models,
+                        scorer: widget.scorer,
                       ),
                     ),
                   );
+                  // Parent settings (e.g. whether the child may switch
+                  // packs) are read at build time; pick them up on return.
+                  if (mounted) setState(() {});
                 },
                 child: Padding(
                   padding: const EdgeInsets.all(12),
@@ -116,6 +125,145 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The active pack's flags. Tappable (with a small hint chevron) only when
+/// [onTap] is set — see AppPrefs.childCanSwitchPacks.
+class _FlagPair extends StatelessWidget {
+  const _FlagPair({
+    required this.source,
+    required this.target,
+    this.onTap,
+    this.flagSize = 30,
+  });
+
+  final Language source;
+  final Language target;
+  final VoidCallback? onTap;
+  final double flagSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final flags = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(source.flag, style: TextStyle(fontSize: flagSize)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Icon(Icons.arrow_forward_rounded,
+              size: flagSize * 0.8, color: Colors.brown),
+        ),
+        Text(target.flag, style: TextStyle(fontSize: flagSize)),
+        if (onTap != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Icon(Icons.expand_more_rounded,
+                size: flagSize * 0.7,
+                color: Colors.brown.withValues(alpha: 0.5)),
+          ),
+      ],
+    );
+    if (onTap == null) return flags;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: flags,
+        ),
+      ),
+    );
+  }
+}
+
+/// Text-free pack chooser for the child: one big flag pair per pack, the
+/// active one outlined. Picking one activates it; ActivePackScope then
+/// rebuilds the start screen for the new pack.
+class _PackPickerSheet extends StatelessWidget {
+  const _PackPickerSheet({required this.packStore});
+
+  final PackStore packStore;
+
+  static Future<void> show(BuildContext context, PackStore packStore) {
+    return showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFFFDF8F0),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (_) => _PackPickerSheet(packStore: packStore),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final activeId = packStore.active.id;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 16,
+          runSpacing: 16,
+          children: [
+            for (final pack in packStore.packs)
+              _PackChoice(
+                pack: pack,
+                selected: pack.id == activeId,
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  if (pack.id != activeId) {
+                    await packStore.activate(pack.id);
+                  }
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PackChoice extends StatelessWidget {
+  const _PackChoice({
+    required this.pack,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final LanguagePack pack;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.primary;
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(
+          color: selected ? color : Colors.transparent,
+          width: 4,
+        ),
+      ),
+      elevation: 2,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          child: _FlagPair(
+            source: languageByCode(pack.sourceCode),
+            target: languageByCode(pack.targetCode),
+            flagSize: 44,
+          ),
         ),
       ),
     );
