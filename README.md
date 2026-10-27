@@ -24,9 +24,9 @@ recognition, and the active pair's flags shown on the start screen.
 player, parent recording studio, adaptive lessons with recorded answers and a
 review inbox, on-device speech scoring (optional ~40 MB model download), the
 parent progress dashboard, and polish (illustrations, confetti rewards,
-two-finger parent gate, app icon). Every push builds an installable APK —
-download it from the latest GitHub Actions run (Artifacts →
-`language-teatcher-apk`); Play Store publishing steps are in
+two-finger parent gate, app icon). Every push to `master` publishes a GitHub
+Release with an installable APK; branch builds are available as `CI` run
+artifacts. Release and Play Store steps are in
 [docs/RELEASE.md](docs/RELEASE.md).
 
 Word illustrations are [OpenMoji](https://openmoji.org) artwork

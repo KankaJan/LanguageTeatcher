@@ -1,9 +1,18 @@
 name: CI
 
+# Every branch and pull request: static analysis, unit tests, and a
+# debug-signed release APK as a downloadable artifact for testing on a phone.
+# Publishing (tags, GitHub Releases, Play) lives in release.yml and runs only
+# on master.
+
 on:
   push:
-    branches: ['**']
+    branches-ignore: ['master']
   pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   analyze-and-test:
@@ -32,10 +41,11 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      # Release build is signed with the debug key by the default Flutter
-      # scaffold, so the artifact installs directly on a phone.
+      # Signed with the committed debug key (android/app/debug.keystore):
+      # installs over any other debug-signed build of the app.
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
         with:
-          name: language-teatcher-apk
+          name: otterly-apk-${{ github.sha }}
           path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 14

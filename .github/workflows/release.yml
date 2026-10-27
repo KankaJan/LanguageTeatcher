@@ -1,0 +1,144 @@
+name: Release
+
+# Continuous delivery from master. Every push to master:
+#   1. analyzes and tests;
+#   2. builds the release APK and AAB — signed with the Play upload key when
+#      the ANDROID_KEYSTORE_* secrets exist, otherwise with the committed
+#      debug key;
+#   3. tags the commit with the version from pubspec.yaml (1.2.3+4 → v1.2.3-b4)
+#      and publishes a GitHub Release with the APK attached — but only when
+#      that tag does not exist yet, so a release means "bump the version in
+#      pubspec.yaml and merge";
+#   4. uploads the AAB to the Play internal testing track when the
+#      PLAY_SERVICE_ACCOUNT_JSON secret exists (and the build was signed with
+#      the upload key).
+# Secrets are documented in docs/RELEASE.md.
+
+on:
+  push:
+    branches: ['master']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+  HAS_PLAY: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # tags are needed to detect an already-released version
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+      - name: Read version from pubspec.yaml
+        id: version
+        run: |
+          raw=$(grep -E '^version:' pubspec.yaml | sed -E 's/^version:[[:space:]]*//' | tr -d '[:space:]')
+          name=${raw%%+*}
+          build=${raw##*+}
+          if [ "$raw" = "$name" ]; then build=1; fi
+          tag="v${name}-b${build}"
+          echo "raw=$raw"   >> "$GITHUB_OUTPUT"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag"   >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Tag $tag already exists; building, but not publishing a release. Bump version in pubspec.yaml to release."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install Play upload key
+        if: env.HAS_KEYSTORE == 'true'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/upload-keystore.jks
+          cat > android/key.properties <<EOF
+          storeFile=upload-keystore.jks
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          keyPassword=$ANDROID_KEY_PASSWORD
+          EOF
+          echo "Release builds will be signed with the Play upload key."
+
+      - name: Build APK and app bundle
+        run: |
+          flutter build apk --release
+          flutter build appbundle --release
+          ls -l build/app/outputs/flutter-apk/app-release.apk build/app/outputs/bundle/release/app-release.aab
+
+      - name: Rename outputs
+        id: files
+        run: |
+          v=${{ steps.version.outputs.tag }}
+          suffix=$([ "$HAS_KEYSTORE" = "true" ] && echo "" || echo "-debugsigned")
+          cp build/app/outputs/flutter-apk/app-release.apk "otterly-${v}${suffix}.apk"
+          cp build/app/outputs/bundle/release/app-release.aab "otterly-${v}${suffix}.aab"
+          echo "apk=otterly-${v}${suffix}.apk" >> "$GITHUB_OUTPUT"
+          echo "aab=otterly-${v}${suffix}.aab" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: otterly-${{ steps.version.outputs.tag }}
+          path: |
+            ${{ steps.files.outputs.apk }}
+            ${{ steps.files.outputs.aab }}
+          retention-days: 90
+
+      - name: Publish GitHub Release
+        if: steps.version.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Otterly ${{ steps.version.outputs.name }} (build ${{ steps.version.outputs.build }})
+          generate_release_notes: true
+          body: |
+            Version ${{ steps.version.outputs.raw }} from `pubspec.yaml`.
+
+            **Install on a phone:** download the `.apk` below, open it on the
+            phone, allow installation from unknown sources.
+            ${{ env.HAS_KEYSTORE == 'true' && 'Signed with the Play upload key.' || 'Signed with the shared debug key (no Play upload key configured) — fine for your own phone; cannot be uploaded to Google Play.' }}
+          files: |
+            ${{ steps.files.outputs.apk }}
+            ${{ steps.files.outputs.aab }}
+
+      - name: Upload to Google Play (internal testing)
+        if: steps.version.outputs.exists == 'false' && env.HAS_PLAY == 'true' && env.HAS_KEYSTORE == 'true'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: cz.kankajan.otterly
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed
+
+      - name: Play upload skipped
+        if: steps.version.outputs.exists == 'false' && (env.HAS_PLAY != 'true' || env.HAS_KEYSTORE != 'true')
+        run: echo "::notice::Google Play upload skipped — PLAY_SERVICE_ACCOUNT_JSON and the ANDROID_KEYSTORE_* secrets are both required (docs/RELEASE.md)."

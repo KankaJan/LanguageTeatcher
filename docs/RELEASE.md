@@ -1,48 +1,92 @@
 # Release guide
 
-## Everyday installs (no setup needed)
+Two GitHub Actions workflows do the building:
 
-Every push builds an installable APK in GitHub Actions: repository → **Actions**
-→ latest green run → **Artifacts** → `language-teatcher-apk`. Download the zip
-on the phone, extract, open the APK, allow "install from unknown sources". This
-APK is signed with the debug key — fine for your own phone, updates install
-over the previous version.
+| Workflow | Runs on | Produces |
+|---|---|---|
+| `CI` (`.github/workflows/ci.yml`) | every branch except `master`, every PR | analysis + tests, a debug-signed APK as a run artifact (14 days) |
+| `Release` (`.github/workflows/release.yml`) | every push to `master` | analysis + tests, APK + AAB, a git tag and a **GitHub Release** with the APK attached, optional upload to Google Play |
 
-## Publishing to Google Play (when you want it)
+## Everyday installs
 
-Play requires a release signed with **your own keystore** (keep it and its
-passwords safe — losing it means you can never update the app on Play again).
+- Work on a branch: **Actions** → the branch's latest green `CI` run →
+  **Artifacts** → `otterly-apk-<sha>`. Download the zip on the phone, extract,
+  open the APK, allow "install from unknown sources".
+- Releases: repository → **Releases** → latest → the `.apk` asset. Same install
+  steps.
 
-1. **Create a keystore** (once, on your computer):
+Both are signed with the committed debug key (`android/app/debug.keystore`),
+so they install over each other. A build signed with the Play upload key (see
+below) is a different signature: switching between the two needs one
+uninstall.
+
+## Cutting a release
+
+1. Bump `version:` in `pubspec.yaml` — `1.0.1+3` = versionName 1.0.1,
+   versionCode 3. **Always increase the `+N` part**; Play rejects a reused
+   versionCode and the pipeline uses it in the tag.
+2. Merge to `master` (or push to it).
+3. `Release` tags the commit `v1.0.1-b3`, publishes the GitHub Release with
+   generated notes, and — when the secrets below exist — ships the AAB to
+   Play's internal testing track.
+
+A push to `master` whose version already has a tag still builds and uploads
+the artifact, but does not publish a release (the run shows a notice). This is
+what makes "a release" a deliberate act: it is the version bump.
+
+## Google Play
+
+Play requires a bundle signed with **your own upload keystore** (keep it and
+its passwords safe — losing it means you can never update the app on Play
+again) and, for the very first upload, a manual step in the Play Console.
+
+### One-time setup
+
+1. **Create the keystore** on your computer:
 
    ```bash
-   keytool -genkey -v -keystore languageteatcher.jks \
-     -keyalg RSA -keysize 2048 -validity 10000 -alias languageteatcher
+   keytool -genkey -v -keystore otterly-upload.jks \
+     -keyalg RSA -keysize 2048 -validity 10000 -alias upload
    ```
 
-2. **Create `android/key.properties`** (never commit it — it is covered by
-   `android/.gitignore`'s `key.properties` entry; verify before committing):
+2. **Local release builds** (optional): create `android/key.properties` — it
+   is git-ignored (`android/.gitignore`: `key.properties`, `**/*.jks`):
 
    ```properties
    storePassword=...
    keyPassword=...
-   keyAlias=languageteatcher
-   storeFile=/absolute/path/to/languageteatcher.jks
+   keyAlias=upload
+   storeFile=/absolute/path/to/otterly-upload.jks
    ```
 
-3. **Switch signing in `android/app/build.gradle.kts`** — replace the debug
-   `signingConfig` in the `release` build type with a config read from
-   `key.properties` (the standard snippet from the Flutter docs:
-   https://docs.flutter.dev/deployment/android#signing-the-app).
+   `android/app/build.gradle.kts` picks it up automatically; without the file
+   it signs with the debug key.
 
-4. **Build the bundle**: `flutter build appbundle` → upload
-   `build/app/outputs/bundle/release/app-release.aab` in the
-   [Play Console](https://play.google.com/console) to an **Internal testing**
-   track first. Internal testing needs no review to start and installs via a
-   link on your phone.
+3. **GitHub secrets** (repository → Settings → Secrets and variables →
+   Actions):
+
+   | Secret | Value |
+   |---|---|
+   | `ANDROID_KEYSTORE_BASE64` | `base64 -w0 otterly-upload.jks` (PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("otterly-upload.jks"))`) |
+   | `ANDROID_KEYSTORE_PASSWORD` | the store password |
+   | `ANDROID_KEY_ALIAS` | `upload` |
+   | `ANDROID_KEY_PASSWORD` | the key password |
+   | `PLAY_SERVICE_ACCOUNT_JSON` | the JSON key of a Play Console service account with "Release to testing tracks" permission |
+
+   With the four `ANDROID_*` secrets the Release workflow signs with the upload
+   key (the release asset loses its `-debugsigned` suffix). With
+   `PLAY_SERVICE_ACCOUNT_JSON` as well, it uploads the AAB to the **internal**
+   track after publishing the GitHub Release.
+
+4. **First Play upload is manual**: create the app in the
+   [Play Console](https://play.google.com/console), download the
+   `otterly-v…aab` asset from the GitHub Release (or build locally with
+   `flutter build appbundle`) and upload it to Internal testing by hand. The
+   API refuses to create the first release of a new app; from the second
+   version on the pipeline does it.
 
 5. Play will ask for: an app name, short/full description, a few screenshots,
-   a 512×512 icon (upscale `tool`'s generated icon or re-export at 512), a
+   a 512×512 icon (upscale `tool`'s generated icon or re-export at 512), the
    privacy declaration (see below), and — because it appeals to children —
    the Families policy questionnaire.
 
@@ -72,7 +116,3 @@ not accurate once the bundled SDKs are counted:
   installation tokens. The app's own warnings/errors (tags `Otterly`,
   `VoskScorer`) contain no user data.
 
-## Version numbers
-
-`pubspec.yaml` → `version: 1.0.0+2` = versionName 1.0.0, versionCode 2.
-Bump the `+N` part on every release; Play rejects a reused versionCode.
