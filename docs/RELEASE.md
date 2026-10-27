@@ -43,9 +43,34 @@ passwords safe — losing it means you can never update the app on Play again).
 
 5. Play will ask for: an app name, short/full description, a few screenshots,
    a 512×512 icon (upscale `tool`'s generated icon or re-export at 512), a
-   privacy declaration (easy here: the app collects nothing and everything
-   stays on the device), and — because it appeals to children — the Families
-   policy questionnaire.
+   privacy declaration (see below), and — because it appeals to children —
+   the Families policy questionnaire.
+
+## What the app does with data (for the Data safety form)
+
+The app has no analytics or accounts of its own. Still, "collects nothing" is
+not accurate once the bundled SDKs are counted:
+
+- **Lessons, the child's recordings, the parent's recordings, progress** —
+  stored only in the app's private storage on the phone. Never uploaded,
+  never logged. Lessons run offline.
+- **ML Kit on-device translation (Google)** — used only when the parent
+  creates a new language pack. The words are translated on the phone, but the
+  SDK downloads its language models from Google, creates a Firebase
+  installation identifier for the app instance, fetches remote configuration
+  and uploads SDK usage/diagnostic telemetry to Google
+  (`firebaselogging.googleapis.com`). Declare this as third-party collection
+  of device/app identifiers and diagnostics, and check Google's current ML
+  Kit terms for the exact wording and any opt-out before submitting. Because
+  the app is child-directed, the Families policy requires every SDK in it to
+  be suitable for children — verify ML Kit's status at submission time.
+- **Vosk speech model** — downloaded once from `alphacephei.com` (the
+  server sees the phone's IP address for that download). Recognition itself
+  runs entirely on the device; no audio leaves the phone.
+- **Logging** — release builds strip `Log.v`/`Log.d` calls app-wide
+  (`android/app/proguard-rules.pro`), which removes ML Kit's debug output of
+  installation tokens. The app's own warnings/errors (tags `Otterly`,
+  `VoskScorer`) contain no user data.
 
 ## Version numbers
 

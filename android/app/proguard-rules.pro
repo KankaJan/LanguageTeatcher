@@ -22,3 +22,13 @@
 # translation channel then fails with MissingPluginException.
 -keep class * implements com.google.firebase.components.ComponentRegistrar { <init>(); }
 -keep class com.google.mlkit.** implements com.google.firebase.components.ComponentRegistrar { <init>(); }
+
+# Release builds: drop verbose/debug logging app-wide. ML Kit's Firebase
+# installation client prints its installation id, refresh token and auth
+# token at debug level, and the remote-config client prints whole responses;
+# none of that belongs in a logcat a parent might paste into a bug report.
+# Our own diagnostics use Log.w / Log.e and are kept.
+-assumenosideeffects class android.util.Log {
+    public static *** v(...);
+    public static *** d(...);
+}
