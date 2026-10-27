@@ -377,6 +377,7 @@ class _ParentScreenState extends State<ParentScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Text(
+              'Otterly © 2026 Jan Kanka. Všechna práva vyhrazena.\n'
               'Obrázky slovíček: OpenMoji (openmoji.org), licence CC BY-SA 4.0.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
